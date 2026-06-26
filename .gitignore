@@ -1,0 +1,65 @@
+# ==========================================
+# Django & Python Project Gitignore
+# ==========================================
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+*.venv
+
+# Python Cache & Compiled Files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py.class
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+nosetests.xml
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Django Settings & Environment
+.env
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Media & Static Files
+media/
+staticfiles/
+static_collected/
+
+# Logs & Debugging
+*.log
+pip-log.txt
+cherrypy.log
+gevent.log
+gunicorn.log
+uwsgi.log
+
+# IDE & Editor Specific
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# OS Specific Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Lockfiles / Dependency details
+requirements.lock.txt

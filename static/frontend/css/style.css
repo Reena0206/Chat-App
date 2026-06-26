@@ -1,0 +1,692 @@
+/* =================================================================
+   ChatApp — style.css
+   Dual-theme (Light / Dark) companion to Tailwind CSS CDN.
+   Handles: CSS variables, glassmorphism, chat bubbles,
+            toggle switch, nav items, alerts, scrollbars, animations.
+   All component classes respect the .dark class on <html>.
+================================================================= */
+
+/* ──────────────────────────────────────────────────────────────
+   CSS CUSTOM PROPERTIES  (the single source of truth for theming)
+   ────────────────────────────────────────────────────────────── */
+:root {
+    /* Light mode defaults */
+    --clr-bg:          #f1f5f9;
+    --clr-surface:     #ffffff;
+    --clr-surface2:    #f8fafc;
+    --clr-border:      #e2e8f0;
+    --clr-border2:     #cbd5e1;
+    --clr-text:        #0f172a;
+    --clr-muted:       #64748b;
+    --clr-faint:       #94a3b8;
+
+    --clr-brand:       #4f46e5;
+    --clr-brand-light: #818cf8;
+    --clr-brand-bg:    rgba(79,70,229,0.08);
+
+    --shadow-card:     0 1px 8px rgba(0,0,0,0.08);
+    --shadow-glow:     0 0 20px rgba(99,102,241,0.3);
+
+    /* Chat bubble light */
+    --bubble-own-bg:   linear-gradient(135deg, #4f46e5, #7c3aed);
+    --bubble-own-text: #ffffff;
+    --bubble-other-bg: #f1f5f9;
+    --bubble-other-text: #1e293b;
+    --bubble-other-border: #e2e8f0;
+
+    /* Message area */
+    --chat-bg:         #f8fafc;
+}
+
+html.dark {
+    --clr-bg:          #0d1117;
+    --clr-surface:     #161b22;
+    --clr-surface2:    #1c2230;
+    --clr-border:      #21262d;
+    --clr-border2:     #30363d;
+    --clr-text:        #e6edf3;
+    --clr-muted:       #8b949e;
+    --clr-faint:       #484f58;
+
+    --clr-brand:       #6366f1;
+    --clr-brand-light: #818cf8;
+    --clr-brand-bg:    rgba(99,102,241,0.12);
+
+    --shadow-card:     0 4px 24px rgba(0,0,0,0.45);
+    --shadow-glow:     0 0 24px rgba(99,102,241,0.4);
+
+    /* Chat bubble dark */
+    --bubble-own-bg:   linear-gradient(135deg, #4f46e5, #7c3aed);
+    --bubble-own-text: #ffffff;
+    --bubble-other-bg: #1c2230;
+    --bubble-other-text: #e2e8f0;
+    --bubble-other-border: #21262d;
+
+    --chat-bg:         #0d1117;
+}
+
+/* Global transition for smooth theme switching */
+*, *::before, *::after {
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease;
+}
+/* Remove transition on animations/transforms to avoid breaking them */
+.animate-pulse-soft,
+.animate-fade-in,
+.animate-slide-up,
+.animate-bounce-in,
+.message-bubble {
+    transition: none;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   AUTH PAGE BACKGROUND
+   ────────────────────────────────────────────────────────────── */
+.auth-page {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e0e7ff 50%, #f5f3ff 100%);
+}
+
+html.dark .auth-page {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 40%, #1a1040 70%, #0d1117 100%);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   GLASSMORPHISM CARD
+   ────────────────────────────────────────────────────────────── */
+.glass-card {
+    background: var(--clr-surface);
+    border-color: var(--clr-border);
+    box-shadow: var(--shadow-card);
+}
+
+html.dark .glass-card {
+    background: rgba(22, 27, 34, 0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: var(--clr-border);
+}
+
+/* Auth-page glass card (sits on gradient) */
+.auth-glass {
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+}
+
+html.light .auth-glass {
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    box-shadow: 0 8px 40px rgba(99, 102, 241, 0.12);
+}
+
+html.dark .auth-glass {
+    background: rgba(22, 27, 34, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   FORM INPUTS
+   ────────────────────────────────────────────────────────────── */
+.form-input,
+.auth-input {
+    background: var(--clr-surface2);
+    border: 1px solid var(--clr-border);
+    color: var(--clr-text);
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.form-input:focus,
+.auth-input:focus {
+    border-color: var(--clr-brand);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+    background: var(--clr-surface);
+}
+
+.form-input::placeholder,
+.auth-input::placeholder {
+    color: var(--clr-faint);
+}
+
+.form-input option {
+    background: var(--clr-surface);
+    color: var(--clr-text);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   SIDEBAR NAV ITEMS
+   ────────────────────────────────────────────────────────────── */
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--clr-muted);
+    transition: color 0.15s ease, background 0.15s ease;
+    text-align: left;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.nav-item:hover {
+    color: var(--clr-text);
+    background: var(--clr-brand-bg);
+}
+
+.nav-item.active {
+    color: var(--clr-brand-light);
+    background: var(--clr-brand-bg);
+    font-weight: 600;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   THEME TOGGLE BUTTON
+   ────────────────────────────────────────────────────────────── */
+.theme-btn {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 1px solid var(--clr-border);
+    background: var(--clr-surface2);
+    color: var(--clr-muted);
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.theme-btn:hover {
+    border-color: var(--clr-brand);
+    color: var(--clr-brand-light);
+    background: var(--clr-brand-bg);
+    box-shadow: var(--shadow-glow-sm, 0 0 12px rgba(99,102,241,0.2));
+}
+
+.theme-btn .icon-sun,
+.theme-btn .icon-moon {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* Dark mode: show sun (to switch to light), hide moon */
+html.dark .theme-btn .icon-sun  { opacity: 1; transform: rotate(0deg) scale(1); }
+html.dark .theme-btn .icon-moon { opacity: 0; transform: rotate(90deg) scale(0.5); }
+
+/* Light mode: show moon (to switch to dark), hide sun */
+html.light .theme-btn .icon-sun  { opacity: 0; transform: rotate(-90deg) scale(0.5); }
+html.light .theme-btn .icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
+
+/* ──────────────────────────────────────────────────────────────
+   TOGGLE SWITCH (read receipts etc.)
+   ────────────────────────────────────────────────────────────── */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--clr-border2);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.25s ease;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    top: 3px;
+    background: #ffffff;
+    border-radius: 50%;
+    transition: transform 0.25s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--clr-brand);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   CHAT MESSAGES AREA BACKGROUND
+   ────────────────────────────────────────────────────────────── */
+.chat-messages-bg {
+    background-color: var(--chat-bg);
+}
+
+html.light .chat-messages-bg {
+    background-image: radial-gradient(circle at 20% 80%, rgba(99,102,241,0.04) 0%, transparent 50%),
+                      radial-gradient(circle at 80% 20%, rgba(124,58,237,0.04) 0%, transparent 50%);
+}
+
+html.dark .chat-messages-bg {
+    background-image: radial-gradient(circle at 20% 80%, rgba(99,102,241,0.06) 0%, transparent 50%),
+                      radial-gradient(circle at 80% 20%, rgba(124,58,237,0.06) 0%, transparent 50%);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   MESSAGE BUBBLES
+   ────────────────────────────────────────────────────────────── */
+.message-bubble {
+    max-width: 72%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    word-break: break-word;
+}
+
+.message-own {
+    background: var(--bubble-own-bg);
+    color: var(--bubble-own-text);
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.message-other {
+    background: var(--bubble-other-bg);
+    color: var(--bubble-other-text);
+    margin-right: auto;
+    border-bottom-left-radius: 4px;
+    border: 1px solid var(--bubble-other-border);
+}
+
+.message-meta {
+    font-size: 11px;
+    opacity: 0.55;
+    margin-top: 4px;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   MEDIA PREVIEW
+   ────────────────────────────────────────────────────────────── */
+.media-preview {
+    max-width: 240px;
+    border-radius: 12px;
+    margin-top: 8px;
+    display: block;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   NOTIFICATION UNREAD HIGHLIGHT
+   ────────────────────────────────────────────────────────────── */
+.notification-unread {
+    background: var(--clr-brand-bg);
+    border-left: 3px solid var(--clr-brand);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   ALERT STYLES  (used by api.js showAlert)
+   ────────────────────────────────────────────────────────────── */
+.app-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.app-alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+html.dark .app-alert-danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #fca5a5;
+}
+
+.app-alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #059669;
+}
+
+html.dark .app-alert-success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #6ee7b7;
+}
+
+.app-alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #d97706;
+}
+
+html.dark .app-alert-warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fcd34d;
+}
+
+.app-alert-info {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #4f46e5;
+}
+
+html.dark .app-alert-info {
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   CARD ITEMS (requests, connections, privacy, notifications)
+   ────────────────────────────────────────────────────────────── */
+.request-item,
+.connection-item,
+.privacy-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background: var(--clr-surface2);
+    border: 1px solid var(--clr-border);
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.request-item:hover,
+.connection-item:hover {
+    background: var(--clr-brand-bg);
+    border-color: rgba(99,102,241,0.25);
+}
+
+.privacy-item {
+    justify-content: flex-start;
+    gap: 0.75rem;
+}
+
+.notification-card {
+    padding: 1rem;
+    border-radius: 0.875rem;
+    border: 1px solid var(--clr-border);
+    background: var(--clr-surface);
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.notification-card:hover {
+    background: var(--clr-surface2);
+    border-color: var(--clr-border2);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   CHAT ROOM LIST ITEMS
+   ────────────────────────────────────────────────────────────── */
+.chat-room-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--clr-border);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    text-align: left;
+    background: transparent;
+    border-left: 3px solid transparent;
+    border-right: none;
+    border-top: none;
+    color: var(--clr-text);
+}
+
+.chat-room-item:hover {
+    background: var(--clr-brand-bg);
+}
+
+.chat-room-item.active {
+    background: var(--clr-brand-bg);
+    border-left-color: var(--clr-brand);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   CUSTOM SCROLLBAR
+   ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--clr-border2);
+    border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--clr-muted);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   ANIMATIONS
+   ────────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounceIn {
+    0%   { opacity: 0; transform: scale(0.85); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulseSoft {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
+}
+
+@keyframes themeSpin {
+    0%   { transform: rotate(-180deg) scale(0.5); opacity: 0; }
+    100% { transform: rotate(0deg) scale(1);      opacity: 1; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   SIDEBAR (mobile positioning)
+   ────────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+    #sidebar {
+        position: fixed;
+        top: 3.5rem;
+        left: 0;
+        bottom: 0;
+        z-index: 40;
+    }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   SECTION PAGE HEADING TEXT  (light / dark adaptive)
+   ────────────────────────────────────────────────────────────── */
+.page-heading { color: var(--clr-text); }
+.page-subtext { color: var(--clr-muted); }
+
+/* ──────────────────────────────────────────────────────────────
+   AUTH PAGE BRAND LOGO BLOBS
+   ────────────────────────────────────────────────────────────── */
+.auth-blob-1,
+.auth-blob-2,
+.auth-blob-3 {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(80px);
+    pointer-events: none;
+}
+
+.auth-blob-1 { background: rgba(99, 102, 241, 0.25); }
+.auth-blob-2 { background: rgba(124, 58, 237, 0.2); }
+.auth-blob-3 { background: rgba(236, 72, 153, 0.15); }
+
+html.light .auth-blob-1 { background: rgba(99, 102, 241, 0.18); }
+html.light .auth-blob-2 { background: rgba(124, 58, 237, 0.14); }
+html.light .auth-blob-3 { background: rgba(236, 72, 153, 0.10); }
+
+/* ──────────────────────────────────────────────────────────────
+   PEOPLE YOU MAY KNOW — Suggestion Cards
+   ────────────────────────────────────────────────────────────── */
+
+/* Responsive grid: 2 cols on small, up to 4 on large screens */
+.suggested-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.875rem;
+}
+
+@media (min-width: 640px)  { .suggested-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1024px) { .suggested-grid { grid-template-columns: repeat(4, 1fr); } }
+
+/* Individual card */
+.suggestion-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.25rem 0.75rem 1rem;
+    border-radius: 1rem;
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    cursor: default;
+    overflow: hidden;
+}
+
+.suggestion-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(99, 102, 241, 0.35);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12);
+}
+
+/* Avatar circle */
+.suggestion-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid rgba(99, 102, 241, 0.25);
+}
+
+/* Initials fallback */
+.suggestion-avatar-initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #ffffff;
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+/* Privacy badge (public / private) */
+.suggestion-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.03em;
+}
+
+.suggestion-badge-public {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.suggestion-badge-private {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--clr-brand-light);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+/* Connect button */
+.suggestion-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.375rem 1rem;
+    border-radius: 0.625rem;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.suggestion-btn:hover:not(:disabled) {
+    opacity: 0.88;
+    transform: scale(1.03);
+}
+
+.suggestion-btn:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+/* Sent state */
+.suggestion-btn.suggestion-btn-sent {
+    background: linear-gradient(135deg, #10b981, #059669);
+    cursor: default;
+    pointer-events: none;
+}
+
+/* ── Skeleton loaders ──────────────────────────────────────────── */
+@keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position:  400px 0; }
+}
+
+.suggestion-skeleton {
+    border-radius: 1rem;
+    height: 160px;
+    background: linear-gradient(
+        90deg,
+        var(--clr-surface2) 25%,
+        var(--clr-border)   50%,
+        var(--clr-surface2) 75%
+    );
+    background-size: 800px 100%;
+    animation: shimmer 1.4s infinite linear;
+    border: 1px solid var(--clr-border);
+}

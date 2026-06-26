@@ -1,0 +1,559 @@
+{% extends "frontend/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<!-- ==================== TOP NAVBAR ==================== -->
+<header class="fixed top-0 left-0 right-0 z-50 h-14 flex items-center px-4 gap-3
+               transition-colors duration-300"
+        style="background:var(--clr-surface);border-bottom:1px solid var(--clr-border);box-shadow:var(--shadow-card);">
+
+    <!-- Hamburger (mobile) -->
+    <button id="sidebarToggle"
+            class="lg:hidden p-2 rounded-lg transition-colors duration-200"
+            style="color:var(--clr-muted);"
+            onmouseover="this.style.color=getComputedStyle(document.documentElement).getPropertyValue('--clr-text');this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-surface2');"
+            onmouseout="this.style.color='';this.style.background='';"
+            onclick="toggleSidebar()">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+
+    <!-- Brand -->
+    <a href="/dashboard/" class="flex items-center gap-2 mr-auto lg:w-56">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600
+                    flex items-center justify-center shadow-glow shrink-0">
+            <i data-lucide="message-circle" class="w-4 h-4 text-white"></i>
+        </div>
+        <span class="text-lg font-bold bg-gradient-to-r from-brand-500 to-purple-500
+                     bg-clip-text text-transparent hidden sm:block">
+            ChatApp
+        </span>
+    </a>
+
+    <div class="flex items-center gap-1.5 ml-auto">
+
+        <!-- Theme toggle -->
+        <button data-theme-btn class="theme-btn" aria-label="Toggle theme" title="Toggle theme">
+            <i data-lucide="sun"  class="icon-sun"></i>
+            <i data-lucide="moon" class="icon-moon"></i>
+        </button>
+
+        <!-- Notification bell -->
+        <button onclick="showSection('notificationsSection', null)"
+                class="relative p-2 rounded-xl transition-all duration-200"
+                style="color:var(--clr-muted);"
+                onmouseover="this.style.color=getComputedStyle(document.documentElement).getPropertyValue('--clr-text');this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-bg');"
+                onmouseout="this.style.color='';this.style.background='';">
+            <i data-lucide="bell" class="w-5 h-5"></i>
+            <span id="notificationBadge"
+                  class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center
+                         justify-center text-[10px] font-bold text-white bg-rose-500 rounded-full px-1 hidden">
+                0
+            </span>
+        </button>
+
+        <!-- User avatar pill -->
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl transition-colors duration-200"
+             style="background:var(--clr-surface2);border:1px solid var(--clr-border);">
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-brand-400 to-purple-500
+                        flex items-center justify-center shrink-0">
+                <i data-lucide="user" class="w-3 h-3 text-white"></i>
+            </div>
+            <span class="text-sm font-medium hidden sm:block" id="navUsername"
+                  style="color:var(--clr-text);">You</span>
+        </div>
+
+        <!-- Logout -->
+        <button onclick="logoutUser()"
+                class="p-2 rounded-xl transition-all duration-200"
+                style="color:var(--clr-muted);"
+                onmouseover="this.style.color='#f43f5e';this.style.background='rgba(244,63,94,0.1)';"
+                onmouseout="this.style.color='';this.style.background='';"
+                title="Logout">
+            <i data-lucide="log-out" class="w-5 h-5"></i>
+        </button>
+    </div>
+</header>
+
+<!-- ==================== APP SHELL ==================== -->
+<div class="flex h-screen pt-14">
+
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside id="sidebar"
+           class="sidebar fixed lg:static top-14 left-0 bottom-0 z-40 w-60 shrink-0
+                  flex flex-col py-4 gap-1 px-3
+                  transform -translate-x-full lg:translate-x-0 transition-all duration-300 ease-in-out"
+           style="background:var(--clr-surface);border-right:1px solid var(--clr-border);">
+
+        <nav class="flex flex-col gap-1 flex-1">
+            <button class="nav-item" id="nav-profile"
+                    onclick="showSection('profileSection', this)">
+                <i data-lucide="user-circle" class="w-5 h-5 shrink-0"></i>
+                <span>Profile</span>
+            </button>
+            <button class="nav-item" id="nav-connections"
+                    onclick="showSection('connectionsSection', this)">
+                <i data-lucide="users" class="w-5 h-5 shrink-0"></i>
+                <span>Connections</span>
+            </button>
+            <!-- Chat is active by default -->
+            <button class="nav-item active" id="nav-chat"
+                    onclick="showSection('chatSection', this)">
+                <i data-lucide="message-square" class="w-5 h-5 shrink-0"></i>
+                <span>Chat</span>
+            </button>
+            <button class="nav-item" id="nav-notifications"
+                    onclick="showSection('notificationsSection', this)">
+                <i data-lucide="bell" class="w-5 h-5 shrink-0"></i>
+                <span>Notifications</span>
+                <span id="sidebarBadge"
+                      class="ml-auto min-w-[18px] h-[18px] text-[10px] font-bold text-white
+                             bg-rose-500 rounded-full flex items-center justify-center px-1 hidden">
+                    0
+                </span>
+            </button>
+            <button class="nav-item" id="nav-privacy"
+                    onclick="showSection('privacySection', this)">
+                <i data-lucide="shield" class="w-5 h-5 shrink-0"></i>
+                <span>Privacy</span>
+            </button>
+        </nav>
+
+        <div class="pt-3 mt-2" style="border-top:1px solid var(--clr-border);">
+            <button onclick="logoutUser()"
+                    class="nav-item w-full"
+                    style="color:#f43f5e;"
+                    onmouseover="this.style.background='rgba(244,63,94,0.08)';"
+                    onmouseout="this.style.background='';">
+                <i data-lucide="log-out" class="w-5 h-5 shrink-0"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Sidebar overlay (mobile) -->
+    <div id="sidebarOverlay"
+         class="fixed inset-0 top-14 bg-black/50 z-30 hidden lg:hidden"
+         onclick="toggleSidebar()"></div>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="flex-1 overflow-y-auto" style="background:var(--clr-bg);">
+        <div class="p-4 lg:p-6 max-w-7xl mx-auto">
+
+            <!-- ===== PROFILE SECTION ===== -->
+            <!-- hidden by default — chat is default -->
+            <section id="profileSection" class="content-section hidden animate-fade-in">
+                <div class="mb-5">
+                    <h2 class="text-xl font-bold page-heading">My Profile</h2>
+                    <p class="page-subtext text-sm mt-0.5">Manage your personal information and settings</p>
+                </div>
+                <div id="profileAlert" class="mb-4"></div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Avatar card -->
+                    <div class="lg:col-span-1">
+                        <div class="glass-card rounded-2xl p-6 flex flex-col items-center gap-4 border"
+                             style="border-color:var(--clr-border);">
+                            <div class="relative">
+                                <img id="profileImage"
+                                     src="https://ui-avatars.com/api/?name=User&background=4f46e5&color=fff&size=160"
+                                     alt="Profile"
+                                     class="w-36 h-36 rounded-full object-cover ring-4 shadow-glow"
+                                     style="ring-color:rgba(99,102,241,0.4);">
+                                <label for="profilePicture"
+                                       class="absolute bottom-1 right-1 w-8 h-8 rounded-full
+                                              bg-brand-600 hover:bg-brand-500 flex items-center
+                                              justify-center cursor-pointer shadow-lg transition-colors duration-200">
+                                    <i data-lucide="camera" class="w-4 h-4 text-white"></i>
+                                </label>
+                            </div>
+                            <input type="file" id="profilePicture" class="hidden" accept="image/*">
+                            <p class="page-subtext text-xs text-center">Click the camera icon to upload a new photo</p>
+                        </div>
+                    </div>
+
+                    <!-- Profile form -->
+                    <div class="lg:col-span-2">
+                        <div class="glass-card rounded-2xl p-6 border" style="border-color:var(--clr-border);">
+                            <form id="profileForm" class="space-y-5">
+                                <div class="space-y-1.5">
+                                    <label class="text-sm font-medium page-subtext">Bio</label>
+                                    <textarea id="profileBio" rows="3"
+                                              placeholder="Tell people a little about yourself..."
+                                              class="form-input w-full px-4 py-3 rounded-xl resize-none"></textarea>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div class="space-y-1.5">
+                                        <label class="text-sm font-medium page-subtext flex items-center gap-1.5">
+                                            <i data-lucide="eye" class="w-3.5 h-3.5" style="color:var(--clr-faint);"></i>
+                                            Account Visibility
+                                        </label>
+                                        <select id="accountVisibility" class="form-input w-full px-4 py-3 rounded-xl">
+                                            <option value="public">🌐 Public</option>
+                                            <option value="private">🔒 Private</option>
+                                        </select>
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <label class="text-sm font-medium page-subtext flex items-center gap-1.5">
+                                            <i data-lucide="clock" class="w-3.5 h-3.5" style="color:var(--clr-faint);"></i>
+                                            Last Seen
+                                        </label>
+                                        <select id="lastSeenVisibility" class="form-input w-full px-4 py-3 rounded-xl">
+                                            <option value="everyone">Everyone</option>
+                                            <option value="connections">Connections</option>
+                                            <option value="nobody">Nobody</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between p-4 rounded-xl"
+                                     style="background:var(--clr-surface2);border:1px solid var(--clr-border);">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+                                             style="background:var(--clr-brand-bg);">
+                                            <i data-lucide="check-circle" class="w-5 h-5" style="color:var(--clr-brand-light);"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium page-heading">Read Receipts</p>
+                                            <p class="text-xs page-subtext">Let others know when you've read their messages</p>
+                                        </div>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="readReceiptsEnabled">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <button type="submit"
+                                        class="w-full sm:w-auto px-8 py-3 rounded-xl font-semibold text-sm text-white
+                                               bg-gradient-to-r from-brand-600 to-purple-600
+                                               hover:from-brand-500 hover:to-purple-500
+                                               shadow-glow active:scale-[0.98] transition-all duration-200
+                                               flex items-center gap-2">
+                                    <i data-lucide="save" class="w-4 h-4"></i>
+                                    Save Profile
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== CONNECTIONS SECTION ===== -->
+            <section id="connectionsSection" class="content-section hidden animate-fade-in">
+                <div class="mb-5">
+                    <h2 class="text-xl font-bold page-heading">Connections</h2>
+                    <p class="page-subtext text-sm mt-0.5">Manage your network and connection requests</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                    <!-- Left column -->
+                    <div class="space-y-4">
+                        <!-- Send Request -->
+                        <div class="glass-card rounded-2xl p-5 border" style="border-color:var(--clr-border);">
+                            <h3 class="text-sm font-semibold page-heading mb-4 flex items-center gap-2">
+                                <i data-lucide="user-plus" class="w-4 h-4" style="color:var(--clr-brand-light);"></i>
+                                Send Request
+                            </h3>
+                            <form id="sendRequestForm" class="space-y-3">
+                                <input type="text" id="requestUsername"
+                                       placeholder="Enter username…"
+                                       class="form-input w-full px-4 py-2.5 rounded-xl text-sm">
+                                <button class="w-full py-2.5 rounded-xl text-sm font-semibold text-white
+                                               bg-gradient-to-r from-brand-600 to-purple-600
+                                               hover:from-brand-500 hover:to-purple-500
+                                               active:scale-[0.98] transition-all duration-200
+                                               flex items-center justify-center gap-2">
+                                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                                    Send Request
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Block / Restrict -->
+                        <div class="glass-card rounded-2xl p-5 border" style="border-color:var(--clr-border);">
+                            <h3 class="text-sm font-semibold page-heading mb-4 flex items-center gap-2">
+                                <i data-lucide="shield-off" class="w-4 h-4 text-rose-500"></i>
+                                Block / Restrict
+                            </h3>
+                            <input type="text" id="privacyUsername" placeholder="Enter username…"
+                                   class="form-input w-full px-4 py-2.5 rounded-xl text-sm mb-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="blockUser()"
+                                        class="py-2 rounded-xl text-xs font-semibold text-white
+                                               bg-rose-600 hover:bg-rose-500 active:scale-[0.97]
+                                               transition-all duration-200 flex items-center justify-center gap-1">
+                                    <i data-lucide="ban" class="w-3.5 h-3.5"></i> Block
+                                </button>
+                                <button onclick="unblockUser()"
+                                        class="py-2 rounded-xl text-xs font-semibold text-rose-500
+                                               border border-rose-500/40 hover:bg-rose-500/10
+                                               active:scale-[0.97] transition-all duration-200
+                                               flex items-center justify-center gap-1">
+                                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Unblock
+                                </button>
+                                <button onclick="restrictUser()"
+                                        class="py-2 rounded-xl text-xs font-semibold text-amber-500
+                                               border border-amber-500/40 hover:bg-amber-500/10
+                                               active:scale-[0.97] transition-all duration-200
+                                               flex items-center justify-center gap-1">
+                                    <i data-lucide="eye-off" class="w-3.5 h-3.5"></i> Restrict
+                                </button>
+                                <button onclick="unrestrictUser()"
+                                        class="py-2 rounded-xl text-xs font-semibold
+                                               border active:scale-[0.97] transition-all duration-200
+                                               flex items-center justify-center gap-1"
+                                        style="color:var(--clr-muted);border-color:var(--clr-border);"
+                                        onmouseover="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-surface2');"
+                                        onmouseout="this.style.background='';">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i> Unrestrict
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right column -->
+                    <div class="lg:col-span-2 space-y-4">
+
+                        <!-- ── PEOPLE YOU MAY KNOW ── -->
+                        <div class="glass-card rounded-2xl border overflow-hidden"
+                             style="border-color:var(--clr-border);">
+                            <div class="flex items-center justify-between px-5 py-4"
+                                 style="border-bottom:1px solid var(--clr-border);">
+                                <h3 class="text-sm font-semibold page-heading flex items-center gap-2">
+                                    <i data-lucide="sparkles" class="w-4 h-4" style="color:var(--clr-brand-light);"></i>
+                                    People You May Know
+                                </h3>
+                                <button onclick="loadSuggestedUsers()"
+                                        class="text-xs transition-colors flex items-center gap-1"
+                                        style="color:var(--clr-muted);"
+                                        onmouseover="this.style.color=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-light');"
+                                        onmouseout="this.style.color='';">
+                                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
+                                </button>
+                            </div>
+                            <div id="suggestedUsersList" class="p-4">
+                                <!-- Populated by loadSuggestedUsers() -->
+                                <div class="suggested-skeleton-grid">
+                                    <!-- Skeleton loaders shown initially -->
+                                    <div class="suggestion-skeleton"></div>
+                                    <div class="suggestion-skeleton"></div>
+                                    <div class="suggestion-skeleton"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Incoming Requests -->
+                        <div class="glass-card rounded-2xl border overflow-hidden"
+                             style="border-color:var(--clr-border);">
+                            <div class="flex items-center justify-between px-5 py-4"
+                                 style="border-bottom:1px solid var(--clr-border);">
+                                <h3 class="text-sm font-semibold page-heading flex items-center gap-2">
+                                    <i data-lucide="inbox" class="w-4 h-4" style="color:var(--clr-brand-light);"></i>
+                                    Incoming Requests
+                                </h3>
+                                <button onclick="loadIncomingRequests()"
+                                        class="text-xs transition-colors flex items-center gap-1"
+                                        style="color:var(--clr-muted);"
+                                        onmouseover="this.style.color=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-light');"
+                                        onmouseout="this.style.color='';">
+                                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
+                                </button>
+                            </div>
+                            <div id="incomingRequestsList" class="p-4 space-y-2 min-h-[60px]"></div>
+                        </div>
+
+                        <!-- My Connections -->
+                        <div class="glass-card rounded-2xl border overflow-hidden"
+                             style="border-color:var(--clr-border);">
+                            <div class="flex items-center justify-between px-5 py-4"
+                                 style="border-bottom:1px solid var(--clr-border);">
+                                <h3 class="text-sm font-semibold page-heading flex items-center gap-2">
+                                    <i data-lucide="users" class="w-4 h-4" style="color:var(--clr-brand-light);"></i>
+                                    My Connections
+                                </h3>
+                                <button onclick="loadConnections()"
+                                        class="text-xs transition-colors flex items-center gap-1"
+                                        style="color:var(--clr-muted);"
+                                        onmouseover="this.style.color=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-light');"
+                                        onmouseout="this.style.color='';">
+                                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
+                                </button>
+                            </div>
+                            <div id="connectionsList" class="p-4 space-y-2 min-h-[60px]"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== CHAT SECTION (default active) ===== -->
+            <section id="chatSection" class="content-section animate-fade-in">
+                <div class="flex gap-4 h-[calc(100vh-6rem)]">
+
+                    <!-- Chat list panel -->
+                    <div class="w-72 shrink-0 flex flex-col glass-card rounded-2xl border overflow-hidden"
+                         style="border-color:var(--clr-border);">
+                        <div class="p-4" style="border-bottom:1px solid var(--clr-border);">
+                            <form id="startChatForm" class="flex gap-2">
+                                <input type="text" id="chatUsername"
+                                       placeholder="Open chat with…"
+                                       class="form-input flex-1 px-3 py-2 rounded-xl text-sm">
+                                <button class="px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500
+                                               active:scale-[0.97] transition-all duration-200">
+                                    <i data-lucide="arrow-right" class="w-4 h-4 text-white"></i>
+                                </button>
+                            </form>
+                        </div>
+                        <div class="px-4 py-3" style="border-bottom:1px solid var(--clr-border);">
+                            <h3 class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5"
+                                style="color:var(--clr-faint);">
+                                <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+                                Messages
+                            </h3>
+                        </div>
+                        <div id="chatRoomsList" class="flex-1 overflow-y-auto"></div>
+                    </div>
+
+                    <!-- Chat window -->
+                    <div class="flex-1 flex flex-col glass-card rounded-2xl border overflow-hidden min-w-0"
+                         style="border-color:var(--clr-border);">
+                        <div class="flex items-center justify-between px-5 py-3.5 shrink-0"
+                             style="border-bottom:1px solid var(--clr-border);">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-purple-500
+                                            flex items-center justify-center shrink-0">
+                                    <i data-lucide="user" class="w-4 h-4 text-white"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="text-sm font-semibold page-heading truncate" id="activeChatTitle">Select a chat</h3>
+                                    <p class="text-xs truncate" id="typingStatus" style="color:var(--clr-muted);"></p>
+                                </div>
+                            </div>
+                            <button onclick="markMessagesRead()"
+                                    class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium
+                                           border transition-all duration-200 flex items-center gap-1"
+                                    style="color:var(--clr-muted);border-color:var(--clr-border);"
+                                    onmouseover="this.style.color=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-light');this.style.borderColor='rgba(99,102,241,0.4)';"
+                                    onmouseout="this.style.color='';this.style.borderColor='';">
+                                <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
+                                Mark Read
+                            </button>
+                        </div>
+                        <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 chat-messages-bg"></div>
+                        <div class="shrink-0 p-4 space-y-3" style="border-top:1px solid var(--clr-border);">
+                            <form id="sendMessageForm" class="flex items-center gap-2">
+                                <input type="text" id="messageText" placeholder="Type a message…"
+                                       autocomplete="off"
+                                       class="form-input flex-1 px-4 py-2.5 rounded-xl text-sm">
+                                <button type="submit"
+                                        class="w-10 h-10 rounded-xl bg-brand-600 hover:bg-brand-500
+                                               active:scale-[0.97] transition-all duration-200
+                                               flex items-center justify-center shrink-0">
+                                    <i data-lucide="send" class="w-4 h-4 text-white"></i>
+                                </button>
+                            </form>
+                            <form id="mediaMessageForm" class="flex items-center gap-2">
+                                <select id="mediaType"
+                                        class="form-input px-3 py-2 rounded-xl text-xs w-28 shrink-0">
+                                    <option value="image">🖼 Image</option>
+                                    <option value="video">🎥 Video</option>
+                                    <option value="voice">🎤 Voice</option>
+                                </select>
+                                <label class="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl
+                                              cursor-pointer transition-colors duration-200 text-xs truncate"
+                                       style="background:var(--clr-surface2);border:1px solid var(--clr-border);color:var(--clr-muted);"
+                                       onmouseover="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-bg');"
+                                       onmouseout="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-surface2');">
+                                    <i data-lucide="paperclip" class="w-3.5 h-3.5 shrink-0"></i>
+                                    <span id="mediaFileName">Choose file…</span>
+                                    <input type="file" id="mediaFile" class="hidden"
+                                           onchange="document.getElementById('mediaFileName').textContent = this.files[0]?.name || 'Choose file…'">
+                                </label>
+                                <input type="number" id="mediaDuration" placeholder="Sec"
+                                       class="form-input px-3 py-2 rounded-xl text-xs w-16 shrink-0">
+                                <button type="submit"
+                                        class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500
+                                               active:scale-[0.97] transition-all duration-200
+                                               text-white text-xs font-medium flex items-center gap-1 shrink-0">
+                                    <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                                    Upload
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== NOTIFICATIONS SECTION ===== -->
+            <section id="notificationsSection" class="content-section hidden animate-fade-in">
+                <div class="mb-5 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-bold page-heading">Notifications</h2>
+                        <p class="page-subtext text-sm mt-0.5">Stay up to date with your activity</p>
+                    </div>
+                    <button onclick="markAllNotificationsRead()"
+                            class="px-4 py-2 rounded-xl text-sm font-medium border
+                                   transition-all duration-200 flex items-center gap-2 active:scale-[0.97]"
+                            style="color:var(--clr-brand-light);border-color:rgba(99,102,241,0.35);"
+                            onmouseover="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-bg');"
+                            onmouseout="this.style.background='';">
+                        <i data-lucide="check-check" class="w-4 h-4"></i>
+                        Mark All Read
+                    </button>
+                </div>
+                <div id="notificationsList" class="space-y-3"></div>
+            </section>
+
+            <!-- ===== PRIVACY SECTION ===== -->
+            <section id="privacySection" class="content-section hidden animate-fade-in">
+                <div class="mb-5">
+                    <h2 class="text-xl font-bold page-heading">Privacy</h2>
+                    <p class="page-subtext text-sm mt-0.5">Manage blocked and restricted accounts</p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-card rounded-2xl border overflow-hidden" style="border-color:var(--clr-border);">
+                        <div class="px-5 py-4 flex items-center gap-2" style="border-bottom:1px solid var(--clr-border);">
+                            <i data-lucide="ban" class="w-4 h-4 text-rose-500"></i>
+                            <h3 class="text-sm font-semibold page-heading">Blocked Users</h3>
+                        </div>
+                        <div id="blockedUsersList" class="p-4 space-y-2 min-h-[80px]"></div>
+                    </div>
+                    <div class="glass-card rounded-2xl border overflow-hidden" style="border-color:var(--clr-border);">
+                        <div class="px-5 py-4 flex items-center gap-2" style="border-bottom:1px solid var(--clr-border);">
+                            <i data-lucide="eye-off" class="w-4 h-4 text-amber-500"></i>
+                            <h3 class="text-sm font-semibold page-heading">Restricted Users</h3>
+                        </div>
+                        <div id="restrictedUsersList" class="p-4 space-y-2 min-h-[80px]"></div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div><!-- end app shell -->
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'frontend/js/api.js' %}"></script>
+<script src="{% static 'frontend/js/auth.js' %}"></script>
+<script src="{% static 'frontend/js/dashboard.js' %}"></script>
+<script src="{% static 'frontend/js/chat.js' %}"></script>
+
+<script>
+    function toggleSidebar() {
+        var sidebar = document.getElementById('sidebar');
+        var overlay = document.getElementById('sidebarOverlay');
+        var isOpen  = !sidebar.classList.contains('-translate-x-full');
+        sidebar.classList.toggle('-translate-x-full', isOpen);
+        overlay.classList.toggle('hidden', isOpen);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var user = getCurrentUser();
+        if (user) {
+            var el = document.getElementById('navUsername');
+            if (el) el.textContent = user.username || 'You';
+        }
+    });
+</script>
+{% endblock %}

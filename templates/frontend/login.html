@@ -1,0 +1,115 @@
+{% extends "frontend/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="auth-page min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+
+    <!-- Animated background blobs -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="auth-blob-1 absolute -top-40 -left-40 w-96 h-96 animate-pulse-soft"></div>
+        <div class="auth-blob-2 absolute -bottom-40 -right-40 w-96 h-96 animate-pulse-soft" style="animation-delay:1.2s;"></div>
+        <div class="auth-blob-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64"></div>
+    </div>
+
+    <!-- Theme toggle (top-right corner) -->
+    <div class="absolute top-4 right-4 z-10">
+        <button data-theme-btn
+                class="theme-btn"
+                aria-label="Toggle theme"
+                title="Toggle theme">
+            <!-- Sun icon: visible in dark mode -->
+            <i data-lucide="sun"  class="icon-sun"></i>
+            <!-- Moon icon: visible in light mode -->
+            <i data-lucide="moon" class="icon-moon"></i>
+        </button>
+    </div>
+
+    <!-- Card wrapper -->
+    <div class="relative w-full max-w-md animate-slide-up">
+
+        <!-- Brand logo -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl
+                        bg-gradient-to-br from-brand-500 to-purple-600
+                        shadow-glow mb-4">
+                <i data-lucide="message-circle" class="w-8 h-8 text-white"></i>
+            </div>
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-brand-500 to-purple-500 bg-clip-text text-transparent">
+                ChatApp
+            </h1>
+            <p class="page-subtext text-sm mt-1">Connect &amp; message instantly</p>
+        </div>
+
+        <!-- Glassmorphism card -->
+        <div class="auth-glass rounded-2xl p-8">
+            <h2 class="text-xl font-semibold page-heading mb-1">Welcome back</h2>
+            <p class="page-subtext text-sm mb-6">Login to continue chatting</p>
+
+            <!-- Alert -->
+            <div id="loginAlert" class="mb-4"></div>
+
+            <form id="loginForm" class="space-y-5">
+
+                <!-- Identifier -->
+                <div class="space-y-1.5">
+                    <label class="text-sm font-medium page-subtext" for="identifier">
+                        Username or Email
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none"
+                              style="color:var(--clr-faint);">
+                            <i data-lucide="user" class="w-4 h-4"></i>
+                        </span>
+                        <input type="text"
+                               id="identifier"
+                               required
+                               placeholder="john_doe or john@example.com"
+                               class="auth-input w-full pl-10 pr-4 py-3 rounded-xl text-sm">
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div class="space-y-1.5">
+                    <label class="text-sm font-medium page-subtext" for="password">Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none"
+                              style="color:var(--clr-faint);">
+                            <i data-lucide="lock" class="w-4 h-4"></i>
+                        </span>
+                        <input type="password"
+                               id="password"
+                               required
+                               placeholder="••••••••"
+                               class="auth-input w-full pl-10 pr-4 py-3 rounded-xl text-sm">
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit"
+                        id="loginBtn"
+                        class="w-full py-3 px-4 rounded-xl font-semibold text-sm text-white
+                               bg-gradient-to-r from-brand-600 to-purple-600
+                               hover:from-brand-500 hover:to-purple-500
+                               shadow-glow hover:shadow-lg active:scale-[0.98]
+                               transition-all duration-200 flex items-center justify-center gap-2 mt-2">
+                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    Login
+                </button>
+            </form>
+
+            <p class="text-center text-sm page-subtext mt-6">
+                New user?
+                <a href="/register/"
+                   class="font-semibold text-brand-500 hover:text-brand-400 transition-colors duration-150">
+                    Create account
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'frontend/js/api.js' %}"></script>
+<script src="{% static 'frontend/js/auth.js' %}"></script>
+{% endblock %}
