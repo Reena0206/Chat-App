@@ -8,6 +8,7 @@ from rest_framework import serializers
 
 from apps.chats.models import (
     ChatRoom,
+    ChatRoomParticipant,
     Message,
     MessageMedia,
     MessageReadReceipt,
@@ -499,12 +500,21 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return 0
 
-        return (
-            obj.messages.filter(is_deleted=False)
-            .exclude(sender=request.user)
-            .exclude(read_receipts__user=request.user)
-            .count()
-        )
+        participant = obj.participants.filter(
+            user=request.user,
+            is_active=True,
+        ).only("last_seen_at", "joined_at").first()
+
+        if not participant:
+            return 0
+
+        seen_at = participant.last_seen_at or participant.joined_at
+        queryset = obj.messages.filter(is_deleted=False).exclude(sender=request.user)
+
+        if seen_at:
+            queryset = queryset.filter(created_at__gt=seen_at)
+
+        return queryset.count()
 
 
 class CreateOneToOneRoomSerializer(serializers.Serializer):
@@ -563,3 +573,5 @@ class CreateOneToOneRoomSerializer(serializers.Serializer):
             target_user,
             created_by=request.user,
         )
+
+

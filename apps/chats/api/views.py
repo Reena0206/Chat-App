@@ -16,6 +16,7 @@ from apps.chats.api.serializers import (
     MessageReadSerializer,
 )
 from apps.chats.models import ChatRoom, ChatRoomParticipant, Message, MessageReadReceipt
+from apps.chats.services import get_room_unread_count_for_user, get_total_unread_count_for_user
 from apps.connections.services import are_users_blocked, get_blocked_user_ids
 from apps.notifications.services import create_new_message_notifications
 
@@ -104,6 +105,35 @@ class ChatRoomViewSet(
                 "message": message_data,
             },
         )
+
+    def broadcast_chat_room_update(self, room):
+        channel_layer = get_channel_layer()
+
+        if not channel_layer:
+            return
+
+        participant_ids = list(
+            room.participants.filter(is_active=True).values_list(
+                "user_id",
+                flat=True,
+            )
+        )
+
+        for user_id in participant_ids:
+            async_to_sync(channel_layer.group_send)(
+                f"chat_updates_user_{user_id}",
+                {
+                    "type": "chat_room_event",
+                    "room_id": room.id,
+                    "unread_count": get_room_unread_count_for_user(
+                        room_id=room.id,
+                        user_id=user_id,
+                    ),
+                    "total_unread_count": get_total_unread_count_for_user(
+                        user_id=user_id,
+                    ),
+                },
+            )
 
     def broadcast_read_receipt(self, room_id, request):
         channel_layer = get_channel_layer()
@@ -261,6 +291,7 @@ class ChatRoomViewSet(
             },
         )
 
+        self.broadcast_chat_room_update(room)
         create_new_message_notifications(
             actor=request.user,
             room=room,
@@ -331,6 +362,7 @@ class ChatRoomViewSet(
             },
         )
 
+        self.broadcast_chat_room_update(room)
         create_new_message_notifications(
             actor=request.user,
             room=room,
@@ -413,3 +445,4 @@ class ChatRoomViewSet(
             },
             status=status.HTTP_200_OK,
         )
+

@@ -19,7 +19,7 @@
     </button>
 
     <!-- Brand -->
-    <a href="/dashboard/" class="flex items-center gap-2 mr-auto lg:w-56">
+    <a href="/dashboard/chat/" class="flex items-center gap-2 mr-auto lg:w-56">
         <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600
                     flex items-center justify-center shadow-glow shrink-0">
             <i data-lucide="message-circle" class="w-4 h-4 text-white"></i>
@@ -101,6 +101,11 @@
                     onclick="showSection('chatSection', this)">
                 <i data-lucide="message-square" class="w-5 h-5 shrink-0"></i>
                 <span>Chat</span>
+                <span id="chatBadge"
+                      class="ml-auto min-w-[18px] h-[18px] text-[10px] font-bold text-white
+                             bg-brand-600 rounded-full flex items-center justify-center px-1 hidden">
+                    0
+                </span>
             </button>
             <button class="nav-item" id="nav-notifications"
                     onclick="showSection('notificationsSection', this)">
@@ -141,7 +146,7 @@
         <div class="p-4 lg:p-6 max-w-7xl mx-auto">
 
             <!-- ===== PROFILE SECTION ===== -->
-            <!-- hidden by default — chat is default -->
+            <!-- hidden by default Ã¢â‚¬â€ chat is default -->
             <section id="profileSection" class="content-section hidden animate-fade-in">
                 <div class="mb-5">
                     <h2 class="text-xl font-bold page-heading">My Profile</h2>
@@ -189,8 +194,8 @@
                                             Account Visibility
                                         </label>
                                         <select id="accountVisibility" class="form-input w-full px-4 py-3 rounded-xl">
-                                            <option value="public">🌐 Public</option>
-                                            <option value="private">🔒 Private</option>
+                                            <option value="public">Ã°Å¸Å’Â Public</option>
+                                            <option value="private">Ã°Å¸â€â€™ Private</option>
                                         </select>
                                     </div>
                                     <div class="space-y-1.5">
@@ -256,7 +261,7 @@
                             </h3>
                             <form id="sendRequestForm" class="space-y-3">
                                 <input type="text" id="requestUsername"
-                                       placeholder="Enter username…"
+                                       placeholder="Enter usernameÃ¢â‚¬Â¦"
                                        class="form-input w-full px-4 py-2.5 rounded-xl text-sm">
                                 <button class="w-full py-2.5 rounded-xl text-sm font-semibold text-white
                                                bg-gradient-to-r from-brand-600 to-purple-600
@@ -269,52 +274,61 @@
                             </form>
                         </div>
 
-                        <!-- Block / Restrict -->
-                        <div class="glass-card rounded-2xl p-5 border" style="border-color:var(--clr-border);">
-                            <h3 class="text-sm font-semibold page-heading mb-4 flex items-center gap-2">
-                                <i data-lucide="shield-off" class="w-4 h-4 text-rose-500"></i>
-                                Block / Restrict
-                            </h3>
-                            <input type="text" id="privacyUsername" placeholder="Enter username…"
-                                   class="form-input w-full px-4 py-2.5 rounded-xl text-sm mb-3">
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="blockUser()"
-                                        class="py-2 rounded-xl text-xs font-semibold text-white
-                                               bg-rose-600 hover:bg-rose-500 active:scale-[0.97]
-                                               transition-all duration-200 flex items-center justify-center gap-1">
-                                    <i data-lucide="ban" class="w-3.5 h-3.5"></i> Block
+                        <!-- Privacy Controls -->
+                        <div class="glass-card rounded-2xl p-5 border space-y-4" style="border-color:var(--clr-border);">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <h3 class="text-sm font-semibold page-heading flex items-center gap-2">
+                                        <i data-lucide="shield-off" class="w-4 h-4 text-rose-500"></i>
+                                        Privacy Controls
+                                    </h3>
+                                    <p class="text-xs page-subtext mt-1">
+                                        Type a username to see which privacy action is available.
+                                    </p>
+                                </div>
+                                <span id="privacyStatusPill" class="privacy-pill privacy-pill-muted">Waiting</span>
+                            </div>
+
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-semibold uppercase tracking-wider page-subtext">
+                                    Username
+                                </label>
+                                <input type="text" id="privacyUsername" placeholder="Type username or pick from a list"
+                                       class="form-input w-full px-4 py-2.5 rounded-xl text-sm">
+                                <p id="privacyStatusText" class="text-xs page-subtext">
+                                    Block removes chat access and connections. Restrict only hides presence.
+                                </p>
+                            </div>
+
+                            <div class="privacy-action-grid">
+                                <button type="button" id="blockPrivacyBtn" onclick="blockUser(this)"
+                                        class="privacy-action-btn privacy-action-btn-danger">
+                                    <i data-lucide="ban" class="w-3.5 h-3.5"></i>
+                                    Block
                                 </button>
-                                <button onclick="unblockUser()"
-                                        class="py-2 rounded-xl text-xs font-semibold text-rose-500
-                                               border border-rose-500/40 hover:bg-rose-500/10
-                                               active:scale-[0.97] transition-all duration-200
-                                               flex items-center justify-center gap-1">
-                                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Unblock
+                                <button type="button" id="unblockPrivacyBtn" onclick="unblockUser(this)"
+                                        class="privacy-action-btn privacy-action-btn-muted">
+                                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                                    Unblock
                                 </button>
-                                <button onclick="restrictUser()"
-                                        class="py-2 rounded-xl text-xs font-semibold text-amber-500
-                                               border border-amber-500/40 hover:bg-amber-500/10
-                                               active:scale-[0.97] transition-all duration-200
-                                               flex items-center justify-center gap-1">
-                                    <i data-lucide="eye-off" class="w-3.5 h-3.5"></i> Restrict
+                                <button type="button" id="restrictPrivacyBtn" onclick="restrictUser(this)"
+                                        class="privacy-action-btn privacy-action-btn-warning">
+                                    <i data-lucide="eye-off" class="w-3.5 h-3.5"></i>
+                                    Restrict
                                 </button>
-                                <button onclick="unrestrictUser()"
-                                        class="py-2 rounded-xl text-xs font-semibold
-                                               border active:scale-[0.97] transition-all duration-200
-                                               flex items-center justify-center gap-1"
-                                        style="color:var(--clr-muted);border-color:var(--clr-border);"
-                                        onmouseover="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-surface2');"
-                                        onmouseout="this.style.background='';">
-                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i> Unrestrict
+                                <button type="button" id="unrestrictPrivacyBtn" onclick="unrestrictUser(this)"
+                                        class="privacy-action-btn privacy-action-btn-muted">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                    Unrestrict
                                 </button>
                             </div>
                         </div>
-                    </div>
+                        </div>
 
                     <!-- Right column -->
                     <div class="lg:col-span-2 space-y-4">
 
-                        <!-- ── PEOPLE YOU MAY KNOW ── -->
+                        <!-- Ã¢â€â‚¬Ã¢â€â‚¬ PEOPLE YOU MAY KNOW Ã¢â€â‚¬Ã¢â€â‚¬ -->
                         <div class="glass-card rounded-2xl border overflow-hidden"
                              style="border-color:var(--clr-border);">
                             <div class="flex items-center justify-between px-5 py-4"
@@ -395,7 +409,7 @@
                         <div class="p-4" style="border-bottom:1px solid var(--clr-border);">
                             <form id="startChatForm" class="flex gap-2">
                                 <input type="text" id="chatUsername"
-                                       placeholder="Open chat with…"
+                                       placeholder="Open chat withÃ¢â‚¬Â¦"
                                        class="form-input flex-1 px-3 py-2 rounded-xl text-sm">
                                 <button class="px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500
                                                active:scale-[0.97] transition-all duration-200">
@@ -441,7 +455,7 @@
                         <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 chat-messages-bg"></div>
                         <div class="shrink-0 p-4 space-y-3" style="border-top:1px solid var(--clr-border);">
                             <form id="sendMessageForm" class="flex items-center gap-2">
-                                <input type="text" id="messageText" placeholder="Type a message…"
+                                <input type="text" id="messageText" placeholder="Type a messageÃ¢â‚¬Â¦"
                                        autocomplete="off"
                                        class="form-input flex-1 px-4 py-2.5 rounded-xl text-sm">
                                 <button type="submit"
@@ -454,9 +468,9 @@
                             <form id="mediaMessageForm" class="flex items-center gap-2">
                                 <select id="mediaType"
                                         class="form-input px-3 py-2 rounded-xl text-xs w-28 shrink-0">
-                                    <option value="image">🖼 Image</option>
-                                    <option value="video">🎥 Video</option>
-                                    <option value="voice">🎤 Voice</option>
+                                    <option value="image">Ã°Å¸â€“Â¼ Image</option>
+                                    <option value="video">Ã°Å¸Å½Â¥ Video</option>
+                                    <option value="voice">Ã°Å¸Å½Â¤ Voice</option>
                                 </select>
                                 <label class="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl
                                               cursor-pointer transition-colors duration-200 text-xs truncate"
@@ -464,11 +478,11 @@
                                        onmouseover="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-bg');"
                                        onmouseout="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-surface2');">
                                     <i data-lucide="paperclip" class="w-3.5 h-3.5 shrink-0"></i>
-                                    <span id="mediaFileName">Choose file…</span>
+                                    <span id="mediaFileName">Choose fileÃ¢â‚¬Â¦</span>
                                     <input type="file" id="mediaFile" class="hidden"
-                                           onchange="document.getElementById('mediaFileName').textContent = this.files[0]?.name || 'Choose file…'">
+                                           onchange="document.getElementById('mediaFileName').textContent = this.files[0]?.name || 'Choose fileÃ¢â‚¬Â¦'">
                                 </label>
-                                <input type="number" id="mediaDuration" placeholder="Sec"
+                                <input type="number" id="mediaDuration" placeholder=""
                                        class="form-input px-3 py-2 rounded-xl text-xs w-16 shrink-0">
                                 <button type="submit"
                                         class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500
@@ -513,14 +527,14 @@
                     <div class="glass-card rounded-2xl border overflow-hidden" style="border-color:var(--clr-border);">
                         <div class="px-5 py-4 flex items-center gap-2" style="border-bottom:1px solid var(--clr-border);">
                             <i data-lucide="ban" class="w-4 h-4 text-rose-500"></i>
-                            <h3 class="text-sm font-semibold page-heading">Blocked Users</h3>
+                            <h3 class="text-sm font-semibold page-heading">Blocked Users</h3><span id="blockedUsersCount" class="privacy-pill privacy-pill-muted">0</span>
                         </div>
                         <div id="blockedUsersList" class="p-4 space-y-2 min-h-[80px]"></div>
                     </div>
                     <div class="glass-card rounded-2xl border overflow-hidden" style="border-color:var(--clr-border);">
                         <div class="px-5 py-4 flex items-center gap-2" style="border-bottom:1px solid var(--clr-border);">
                             <i data-lucide="eye-off" class="w-4 h-4 text-amber-500"></i>
-                            <h3 class="text-sm font-semibold page-heading">Restricted Users</h3>
+                            <h3 class="text-sm font-semibold page-heading">Restricted Users</h3><span id="restrictedUsersCount" class="privacy-pill privacy-pill-muted">0</span>
                         </div>
                         <div id="restrictedUsersList" class="p-4 space-y-2 min-h-[80px]"></div>
                     </div>
@@ -534,6 +548,9 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+    window.DASHBOARD_ACTIVE_SECTION = "{{ active_section|default:'chat' }}";
+</script>
 <script src="{% static 'frontend/js/api.js' %}"></script>
 <script src="{% static 'frontend/js/auth.js' %}"></script>
 <script src="{% static 'frontend/js/dashboard.js' %}"></script>
@@ -557,3 +574,4 @@
     });
 </script>
 {% endblock %}
+

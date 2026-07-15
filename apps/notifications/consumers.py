@@ -72,6 +72,8 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
         return Notification.objects.filter(
             recipient=self.user,
             is_read=False,
+        ).exclude(
+            notification_type=Notification.NotificationType.NEW_MESSAGE,
         ).count()
 
     @database_sync_to_async
@@ -79,6 +81,8 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
         notification = Notification.objects.filter(
             id=notification_id,
             recipient=self.user,
+        ).exclude(
+            notification_type=Notification.NotificationType.NEW_MESSAGE,
         ).first()
 
         if not notification:
@@ -95,6 +99,8 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
             "unread_count": Notification.objects.filter(
                 recipient=self.user,
                 is_read=False,
+            ).exclude(
+                notification_type=Notification.NotificationType.NEW_MESSAGE,
             ).count(),
         }
 
@@ -103,6 +109,8 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
         updated_count = Notification.objects.filter(
             recipient=self.user,
             is_read=False,
+        ).exclude(
+            notification_type=Notification.NotificationType.NEW_MESSAGE,
         ).update(
             is_read=True,
             read_at=timezone.now(),

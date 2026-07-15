@@ -22,7 +22,7 @@ from apps.notifications.services import (
 )
 
 from apps.connections.models import Connection, ConnectionRequest, UserBlock, UserRestriction
-from apps.connections.services import cleanup_after_block
+from apps.connections.services import are_users_blocked, cleanup_after_block
 
 class ConnectionRequestViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
@@ -340,6 +340,11 @@ class UserBlockViewSet(
             user_block.reason = reason
             user_block.save(update_fields=["reason"])
 
+        UserRestriction.objects.filter(
+            owner=request.user,
+            restricted_user=target_user,
+        ).delete()
+
         cleanup_after_block(
             blocker=request.user,
             blocked=target_user,
@@ -395,6 +400,7 @@ class UserBlockViewSet(
         )
 
 
+
 class UserRestrictionViewSet(
     mixins.ListModelMixin,
     viewsets.GenericViewSet,
@@ -427,6 +433,14 @@ class UserRestrictionViewSet(
         serializer.is_valid(raise_exception=True)
 
         target_user = serializer.validated_data["target_user"]
+
+        if are_users_blocked(request.user, target_user):
+            return Response(
+                {
+                    "detail": "Unblock this user before restricting them.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         restriction, created = UserRestriction.objects.get_or_create(
             owner=request.user,
@@ -470,14 +484,14 @@ class UserRestrictionViewSet(
         if deleted_count == 0:
             return Response(
                 {
-                    "detail": "This user is not restricted."
+                    "detail": "This user is not restricted.",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         return Response(
             {
-                "message": f"{target_user.username} has been unrestricted."
+                "message": f"{target_user.username} has been unrestricted.",
             },
             status=status.HTTP_200_OK,
         )

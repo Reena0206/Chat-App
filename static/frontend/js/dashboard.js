@@ -4,6 +4,18 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
+    const initialSectionSlug = (window.DASHBOARD_ACTIVE_SECTION || "chat").toLowerCase();
+    const initialSectionId = getSectionIdFromSlug(initialSectionSlug);
+
+    showSection(initialSectionId, null, false);
+    updateDashboardUrl(initialSectionId, true);
+
+    window.addEventListener("popstate", () => {
+        const slug = window.location.pathname.replace(/^\/dashboard\/?/, "").replace(/\/$/, "") || "chat";
+        const sectionId = getSectionIdFromSlug(slug);
+        showSection(sectionId, null, false);
+    });
+
     loadMyProfile();
     loadIncomingRequests();
     loadConnections();
@@ -12,9 +24,16 @@ document.addEventListener("DOMContentLoaded", () => {
     loadBlockedUsers();
     loadRestrictedUsers();
     connectNotificationSocket();
+    connectChatUpdatesSocket();
 
-    // ── Load suggestions when dashboard opens ──────────────────────────────
+    // Load suggestions when dashboard opens
     loadSuggestedUsers();
+
+    const privacyUsername = document.getElementById("privacyUsername");
+    if (privacyUsername) {
+        privacyUsername.addEventListener("input", refreshPrivacyActionUI);
+        refreshPrivacyActionUI();
+    }
 
     const profileForm     = document.getElementById("profileForm");
     const sendRequestForm = document.getElementById("sendRequestForm");
@@ -33,8 +52,37 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// ─── Section switching ────────────────────────────────────────────────────────
-function showSection(sectionId, button) {
+// Section switching
+const DASHBOARD_SECTION_IDS = {
+    chat: "chatSection",
+    profile: "profileSection",
+    connections: "connectionsSection",
+    notifications: "notificationsSection",
+    privacy: "privacySection",
+};
+
+function getSectionSlug(sectionId) {
+    return Object.keys(DASHBOARD_SECTION_IDS).find((slug) => DASHBOARD_SECTION_IDS[slug] === sectionId) || "chat";
+}
+
+function getSectionIdFromSlug(slug) {
+    return DASHBOARD_SECTION_IDS[slug] || DASHBOARD_SECTION_IDS.chat;
+}
+
+function updateDashboardUrl(sectionId, replace = false) {
+    const slug = getSectionSlug(sectionId);
+    const nextUrl = `/dashboard/${slug}/`;
+    const state = { sectionId };
+
+    if (replace) {
+        history.replaceState(state, "", nextUrl);
+        return;
+    }
+
+    history.pushState(state, "", nextUrl);
+}
+
+function showSection(sectionId, button, updateUrl = true) {
     document.querySelectorAll(".content-section").forEach((section) => {
         section.classList.add("hidden");
     });
@@ -50,9 +98,17 @@ function showSection(sectionId, button) {
 
     if (button) {
         button.classList.add("active");
+    } else {
+        const navButton = document.querySelector(`.nav-item[onclick*="${sectionId}"]`);
+        if (navButton) {
+            navButton.classList.add("active");
+        }
     }
 
-    // Close mobile sidebar after navigation
+    if (updateUrl) {
+        updateDashboardUrl(sectionId);
+    }
+
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("sidebarOverlay");
     if (sidebar && sidebar.classList.contains("translate-x-0")) {
@@ -61,7 +117,6 @@ function showSection(sectionId, button) {
     }
 }
 
-// ─── Profile ─────────────────────────────────────────────────────────────────
 async function loadMyProfile() {
     try {
         const profile = await apiRequest("/profiles/me/", {
@@ -110,7 +165,7 @@ async function updateProfile(event) {
     }
 }
 
-// ─── Connections ──────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Connections Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 async function sendConnectionRequest(event) {
     event.preventDefault();
 
@@ -250,14 +305,14 @@ async function loadConnections() {
     }
 }
 
-// ─── Suggested Users ──────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Suggested Users Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 // Strategy:
-//   1. GET /api/v1/profiles/         → all public profiles
-//   2. GET /api/v1/connections/      → already connected user IDs
-//   3. GET /api/v1/connection-requests/outgoing/ → pending sent request user IDs
+//   1. GET /api/v1/profiles/         Ã¢â€ â€™ all public profiles
+//   2. GET /api/v1/connections/      Ã¢â€ â€™ already connected user IDs
+//   3. GET /api/v1/connection-requests/outgoing/ Ã¢â€ â€™ pending sent request user IDs
 //   Filter out: self, already connected, pending request sent.
 //   The profiles API already excludes blocked users server-side.
-// ─────────────────────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 async function loadSuggestedUsers() {
     const container = document.getElementById("suggestedUsersList");
     if (!container) return;
@@ -406,7 +461,7 @@ async function sendSuggestedRequest(username, userId, btn) {
     }
 }
 
-// ─── Notifications ───────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Notifications Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 async function loadNotifications() {
     const container = document.getElementById("notificationsList");
     if (!container) return;
@@ -498,15 +553,182 @@ async function markAllNotificationsRead() {
     loadNotifications();
 }
 
-// ─── Privacy actions ──────────────────────────────────────────────────────────
-async function blockUser()      { await userPrivacyAction("/blocks/block/"); }
-async function unblockUser()    { await userPrivacyAction("/blocks/unblock/"); loadBlockedUsers(); }
-async function restrictUser()   { await userPrivacyAction("/restrictions/restrict/"); }
-async function unrestrictUser() { await userPrivacyAction("/restrictions/unrestrict/"); loadRestrictedUsers(); }
+// --- Privacy actions ---
+let blockedUsersCache = [];
+let restrictedUsersCache = [];
 
-async function userPrivacyAction(endpoint) {
-    const username = document.getElementById("privacyUsername").value;
-    if (!username) { alert("Enter username."); return; }
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function normalizePrivacyUsername(value) {
+    return String(value || "").trim().toLowerCase();
+}
+
+function getBlockedPrivacyEntry(username) {
+    const target = normalizePrivacyUsername(username);
+    return blockedUsersCache.find((block) => normalizePrivacyUsername(block?.blocked?.username) === target) || null;
+}
+
+function getRestrictedPrivacyEntry(username) {
+    const target = normalizePrivacyUsername(username);
+    return restrictedUsersCache.find((item) => normalizePrivacyUsername(item?.restricted_user?.username) === target) || null;
+}
+
+function formatPrivacyTimestamp(value) {
+    if (!value) {
+        return "just now";
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return "just now";
+    }
+
+    return date.toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+}
+
+function prefillPrivacyUsername(username) {
+    const input = document.getElementById("privacyUsername");
+    if (!input) return;
+
+    input.value = username || "";
+    input.focus();
+    refreshPrivacyActionUI();
+}
+
+function setPrivacyButtonState(button, enabled) {
+    if (!button) return;
+
+    button.disabled = !enabled;
+}
+
+function refreshPrivacyActionUI() {
+    const input = document.getElementById("privacyUsername");
+    const statusPill = document.getElementById("privacyStatusPill");
+    const statusText = document.getElementById("privacyStatusText");
+
+    const blockBtn = document.getElementById("blockPrivacyBtn");
+    const unblockBtn = document.getElementById("unblockPrivacyBtn");
+    const restrictBtn = document.getElementById("restrictPrivacyBtn");
+    const unrestrictBtn = document.getElementById("unrestrictPrivacyBtn");
+
+    const username = normalizePrivacyUsername(input ? input.value : "");
+    const blocked = username ? getBlockedPrivacyEntry(username) : null;
+    const restricted = username ? getRestrictedPrivacyEntry(username) : null;
+
+    if (!statusPill || !statusText) {
+        return;
+    }
+
+    if (!username) {
+        statusPill.className = "privacy-pill privacy-pill-muted";
+        statusPill.textContent = "Waiting";
+        statusText.textContent = "Type a username to see the available actions.";
+
+        setPrivacyButtonState(blockBtn, false);
+        setPrivacyButtonState(unblockBtn, false);
+        setPrivacyButtonState(restrictBtn, false);
+        setPrivacyButtonState(unrestrictBtn, false);
+        return;
+    }
+
+    if (blocked) {
+        statusPill.className = "privacy-pill privacy-pill-blocked";
+        statusPill.textContent = "Blocked";
+        statusText.textContent = blocked.reason
+            ? `Blocked on your account. Note: ${blocked.reason}`
+            : "Blocked on your account.";
+
+        setPrivacyButtonState(blockBtn, false);
+        setPrivacyButtonState(unblockBtn, true);
+        setPrivacyButtonState(restrictBtn, false);
+        setPrivacyButtonState(unrestrictBtn, false);
+        return;
+    }
+
+    if (restricted) {
+        statusPill.className = "privacy-pill privacy-pill-restricted";
+        statusPill.textContent = "Restricted";
+        statusText.textContent = "This user can still be blocked, but presence is currently limited.";
+
+        setPrivacyButtonState(blockBtn, true);
+        setPrivacyButtonState(unblockBtn, false);
+        setPrivacyButtonState(restrictBtn, false);
+        setPrivacyButtonState(unrestrictBtn, true);
+        return;
+    }
+
+    statusPill.className = "privacy-pill privacy-pill-ready";
+    statusPill.textContent = "Available";
+    statusText.textContent = "You can block or restrict this user.";
+
+    setPrivacyButtonState(blockBtn, true);
+    setPrivacyButtonState(unblockBtn, false);
+    setPrivacyButtonState(restrictBtn, true);
+    setPrivacyButtonState(unrestrictBtn, false);
+}
+
+function showPrivacyFeedback(message, type = "info") {
+    if (typeof showToast === "function") {
+        showToast(message, type);
+        return;
+    }
+
+    alert(message);
+}
+
+async function blockUser(button = null) {
+    await userPrivacyAction("/blocks/block/", { button });
+}
+
+async function unblockUser(button = null) {
+    await userPrivacyAction("/blocks/unblock/", { button });
+}
+
+async function restrictUser(button = null) {
+    await userPrivacyAction("/restrictions/restrict/", { button });
+}
+
+async function unrestrictUser(button = null) {
+    await userPrivacyAction("/restrictions/unrestrict/", { button });
+}
+
+async function unblockUserFor(username, button = null) {
+    await userPrivacyAction("/blocks/unblock/", { username, button });
+}
+
+async function unrestrictUserFor(username, button = null) {
+    await userPrivacyAction("/restrictions/unrestrict/", { username, button });
+}
+
+async function userPrivacyAction(endpoint, options = {}) {
+    const input = document.getElementById("privacyUsername");
+    const username = normalizePrivacyUsername(options.username || (input ? input.value : ""));
+
+    if (!username) {
+        showPrivacyFeedback("Enter a username first.", "warning");
+        return false;
+    }
+
+    const button = options.button || null;
+    const originalHtml = button ? button.innerHTML : "";
+
+    if (button) {
+        button.disabled = true;
+        button.dataset.originalHtml = originalHtml;
+        button.innerHTML = "Working...";
+    }
 
     try {
         const data = await apiRequest(endpoint, {
@@ -514,77 +736,197 @@ async function userPrivacyAction(endpoint) {
             headers: getAuthHeaders(),
             body: JSON.stringify({ username: username }),
         });
-        alert(data.message || "Action completed.");
-        loadBlockedUsers();
-        loadRestrictedUsers();
-        loadConnections();
-        loadChatRooms();
-        loadSuggestedUsers();
+
+        showPrivacyFeedback(data.message || "Action completed.", "success");
+        await Promise.all([
+            loadBlockedUsers(),
+            loadRestrictedUsers(),
+            loadConnections(),
+            loadChatRooms(),
+            loadSuggestedUsers(),
+        ]);
+        refreshPrivacyActionUI();
+        return true;
     } catch (error) {
-        alert(formatApiError(error));
+        showPrivacyFeedback(formatApiError(error), "danger");
+        return false;
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = button.dataset.originalHtml || originalHtml;
+            delete button.dataset.originalHtml;
+            if (window.lucide) lucide.createIcons({ nodes: [button] });
+        }
     }
 }
 
 async function loadBlockedUsers() {
     const container = document.getElementById("blockedUsersList");
+    const countBadge = document.getElementById("blockedUsersCount");
     if (!container) return;
 
     try {
-        const data  = await apiRequest("/blocks/", { method: "GET", headers: getAuthHeaders() });
+        const data = await apiRequest("/blocks/", { method: "GET", headers: getAuthHeaders() });
         const blocks = data.results || data;
+        blockedUsersCache = blocks;
+
+        if (countBadge) {
+            countBadge.textContent = String(blocks.length);
+        }
 
         if (!blocks.length) {
-            container.innerHTML = `<p class="page-subtext text-sm text-center py-4">No blocked users.</p>`;
+            container.innerHTML = `
+                <div class="privacy-empty">
+                    <i data-lucide="ban" class="w-5 h-5"></i>
+                    <p>No blocked users yet.</p>
+                </div>
+            `;
+            refreshPrivacyActionUI();
+            if (window.lucide) lucide.createIcons({ nodes: container.querySelectorAll('[data-lucide]') });
             return;
         }
 
-        container.innerHTML = blocks.map((block) => `
-            <div class="privacy-item">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                     style="background:rgba(239,68,68,0.12);">
-                    <i data-lucide="user-x" style="width:14px;height:14px;color:#f87171;"></i>
-                </div>
-                <span class="text-sm page-heading">${block.blocked.username}</span>
-            </div>
-        `).join("");
+        container.innerHTML = blocks.map((block) => {
+            const username = block.blocked?.username || "Unknown";
+            const reason = block.reason ? escapeHtml(block.reason) : "No reason added.";
+            const createdAt = formatPrivacyTimestamp(block.created_at);
 
+            return `
+                <div class="privacy-entry">
+                    <div class="privacy-entry-main">
+                        <div class="privacy-entry-avatar privacy-entry-avatar-block">
+                            <i data-lucide="ban" class="w-3.5 h-3.5"></i>
+                        </div>
+                        <div class="privacy-entry-meta">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-semibold page-heading">${escapeHtml(username)}</span>
+                                <span class="privacy-chip privacy-chip-blocked">Blocked</span>
+                            </div>
+                            <p class="text-xs page-subtext mt-1">${reason}</p>
+                            <p class="text-[11px] page-subtext mt-1">Blocked ${createdAt}</p>
+                        </div>
+                    </div>
+                    <div class="privacy-entry-actions">
+                        <button type="button" onclick="prefillPrivacyUsername(${JSON.stringify(username)})"
+                                class="privacy-action-btn privacy-action-btn-muted">
+                            Use
+                        </button>
+                        <button type="button" onclick="unblockUserFor(${JSON.stringify(username)}, this)"
+                                class="privacy-action-btn privacy-action-btn-danger">
+                            Unblock
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        refreshPrivacyActionUI();
         if (window.lucide) lucide.createIcons({ nodes: container.querySelectorAll('[data-lucide]') });
     } catch (error) {
+        blockedUsersCache = [];
+        if (countBadge) {
+            countBadge.textContent = "0";
+        }
         container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load blocked users.</p>`;
+        refreshPrivacyActionUI();
     }
 }
 
 async function loadRestrictedUsers() {
     const container = document.getElementById("restrictedUsersList");
+    const countBadge = document.getElementById("restrictedUsersCount");
     if (!container) return;
 
     try {
-        const data         = await apiRequest("/restrictions/", { method: "GET", headers: getAuthHeaders() });
+        const data = await apiRequest("/restrictions/", { method: "GET", headers: getAuthHeaders() });
         const restrictions = data.results || data;
+        restrictedUsersCache = restrictions;
+
+        if (countBadge) {
+            countBadge.textContent = String(restrictions.length);
+        }
 
         if (!restrictions.length) {
-            container.innerHTML = `<p class="page-subtext text-sm text-center py-4">No restricted users.</p>`;
+            container.innerHTML = `
+                <div class="privacy-empty">
+                    <i data-lucide="eye-off" class="w-5 h-5"></i>
+                    <p>No restricted users yet.</p>
+                </div>
+            `;
+            refreshPrivacyActionUI();
+            if (window.lucide) lucide.createIcons({ nodes: container.querySelectorAll('[data-lucide]') });
             return;
         }
 
-        container.innerHTML = restrictions.map((item) => `
-            <div class="privacy-item">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                     style="background:rgba(245,158,11,0.12);">
-                    <i data-lucide="eye-off" style="width:14px;height:14px;color:#fbbf24;"></i>
-                </div>
-                <span class="text-sm page-heading">${item.restricted_user.username}</span>
-            </div>
-        `).join("");
+        container.innerHTML = restrictions.map((item) => {
+            const username = item.restricted_user?.username || "Unknown";
+            const createdAt = formatPrivacyTimestamp(item.created_at);
 
+            return `
+                <div class="privacy-entry">
+                    <div class="privacy-entry-main">
+                        <div class="privacy-entry-avatar privacy-entry-avatar-restricted">
+                            <i data-lucide="eye-off" class="w-3.5 h-3.5"></i>
+                        </div>
+                        <div class="privacy-entry-meta">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-semibold page-heading">${escapeHtml(username)}</span>
+                                <span class="privacy-chip privacy-chip-restricted">Restricted</span>
+                            </div>
+                            <p class="text-xs page-subtext mt-1">Presence and read visibility are limited.</p>
+                            <p class="text-[11px] page-subtext mt-1">Restricted ${createdAt}</p>
+                        </div>
+                    </div>
+                    <div class="privacy-entry-actions">
+                        <button type="button" onclick="prefillPrivacyUsername(${JSON.stringify(username)})"
+                                class="privacy-action-btn privacy-action-btn-muted">
+                            Use
+                        </button>
+                        <button type="button" onclick="unrestrictUserFor(${JSON.stringify(username)}, this)"
+                                class="privacy-action-btn privacy-action-btn-warning">
+                            Unrestrict
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        refreshPrivacyActionUI();
         if (window.lucide) lucide.createIcons({ nodes: container.querySelectorAll('[data-lucide]') });
     } catch (error) {
+        restrictedUsersCache = [];
+        if (countBadge) {
+            countBadge.textContent = "0";
+        }
         container.innerHTML = `<p class="text-rose-500 text-sm">Failed to load restricted users.</p>`;
+        refreshPrivacyActionUI();
+    }
+}
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Notification WebSocket Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+let notificationSocket = null;
+let chatUpdatesSocket = null;
+let lastChatUnreadTotal = 0;
+
+function setChatUnreadTotal(count) {
+    lastChatUnreadTotal = count || 0;
+}
+
+function syncChatBadge(count) {
+    setChatUnreadTotal(count);
+
+    if (typeof updateChatBadge === "function") {
+        updateChatBadge(lastChatUnreadTotal);
     }
 }
 
-// ─── Notification WebSocket ───────────────────────────────────────────────────
-let notificationSocket = null;
+function shouldShowChatToast(roomId) {
+    const chatSection = document.getElementById("chatSection");
+    const chatVisible = !chatSection || !chatSection.classList.contains("hidden");
+    const currentRoomId = typeof activeRoomId !== "undefined" ? activeRoomId : null;
+
+    return !(chatVisible && currentRoomId && Number(currentRoomId) === Number(roomId));
+}
+
 
 function connectNotificationSocket() {
     const token = getAccessToken();
@@ -620,3 +962,53 @@ function connectNotificationSocket() {
         setTimeout(connectNotificationSocket, 3000);
     };
 }
+function connectChatUpdatesSocket() {
+    const token = getAccessToken();
+    if (!token) return;
+
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    chatUpdatesSocket = new WebSocket(`${protocol}://${window.location.host}/ws/chat/updates/?token=${token}`);
+
+    chatUpdatesSocket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "chat.updates.connected") {
+            const connectedTotal = data.total_unread_count || 0;
+            syncChatBadge(connectedTotal);
+
+            if (connectedTotal > 0 && typeof showToast === "function") {
+                showToast(
+                    connectedTotal === 1
+                        ? "You have 1 unread chat."
+                        : `You have ${connectedTotal} unread chats.`,
+                    "info"
+                );
+            }
+
+            return;
+        }
+
+        if (data.type === "chat.room.updated") {
+            const nextTotal = typeof data.total_unread_count === "number" ? data.total_unread_count : 0;
+            const delta = nextTotal - lastChatUnreadTotal;
+
+            if (delta > 0 && shouldShowChatToast(data.room_id) && typeof showToast === "function") {
+                showToast(
+                    delta === 1
+                        ? "A new unread chat just arrived."
+                        : `${delta} new unread chats just arrived.`,
+                    "info"
+                );
+            }
+
+            syncChatBadge(nextTotal);
+            loadChatRooms();
+        }
+    };
+
+    chatUpdatesSocket.onclose = function () {
+        setTimeout(connectChatUpdatesSocket, 3000);
+    };
+}
+
+

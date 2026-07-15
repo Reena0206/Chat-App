@@ -6,14 +6,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.connections.models import Connection
-
+from apps.connections.services import are_users_blocked, get_blocked_user_ids
 from apps.profiles.api.serializers import (
     PrivateProfilePreviewSerializer,
     ProfilePublicSerializer,
     ProfileUpdateSerializer,
 )
 from apps.profiles.models import Profile
-from apps.connections.services import are_users_blocked, get_blocked_user_ids
+
 
 class ProfileViewSet(
     mixins.ListModelMixin,
@@ -40,10 +40,9 @@ class ProfileViewSet(
         if self.action == "list":
             return queryset.filter(
                 account_visibility=Profile.AccountVisibility.PUBLIC
-        )
+            )
 
         return queryset
-
 
     def get_serializer_class(self):
         if self.action == "me" and self.request.method in ["PATCH", "PUT"]:
@@ -77,7 +76,7 @@ class ProfileViewSet(
 
     def retrieve(self, request, *args, **kwargs):
         profile = get_object_or_404(
-            self.get_queryset(),
+            Profile.objects.select_related("user").filter(user__is_active=True),
             user__username=kwargs.get("username"),
         )
 
@@ -91,7 +90,7 @@ class ProfileViewSet(
 
         is_owner = profile.user_id == request.user.id
         is_connected = Connection.are_connected(request.user, profile.user)
-        
+
         if profile.is_private and not is_owner and not is_connected:
             serializer = PrivateProfilePreviewSerializer(
                 profile,

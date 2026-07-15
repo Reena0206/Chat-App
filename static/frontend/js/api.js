@@ -183,6 +183,54 @@ function showAlert(targetId, message, type = "danger") {
     }
 }
 
+function showToast(message, type = "info") {
+    const container = document.getElementById("toastContainer");
+    if (!container) {
+        return;
+    }
+
+    const iconMap = {
+        danger:  "alert-triangle",
+        success: "check-circle",
+        warning: "alert-circle",
+        info:    "message-square",
+    };
+    const classMap = {
+        danger:  "app-toast-danger",
+        success: "app-toast-success",
+        warning: "app-toast-warning",
+        info:    "app-toast-info",
+    };
+
+    const toast = document.createElement("div");
+    toast.className = `app-toast ${classMap[type] || classMap.info}`;
+    toast.innerHTML = `
+        <div class="app-toast-icon">
+            <i data-lucide="${iconMap[type] || iconMap.info}" class="w-4 h-4"></i>
+        </div>
+        <div class="app-toast-body">
+            <p class="app-toast-title">ChatApp</p>
+            <p class="app-toast-message"></p>
+        </div>
+    `;
+
+    toast.querySelector(".app-toast-message").textContent = message;
+    container.appendChild(toast);
+
+    if (window.lucide) {
+        lucide.createIcons({ nodes: toast.querySelectorAll('[data-lucide]') });
+    }
+
+    requestAnimationFrame(() => {
+        toast.classList.add("app-toast-visible");
+    });
+
+    setTimeout(() => {
+        toast.classList.remove("app-toast-visible");
+        setTimeout(() => toast.remove(), 180);
+    }, 3500);
+}
+
 function formatApiError(error) {
     if (!error) {
         return "Something went wrong.";

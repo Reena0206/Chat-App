@@ -27,6 +27,7 @@ class NotificationViewSet(
                 "connection_request",
             )
             .filter(recipient=self.request.user)
+            .exclude(notification_type=Notification.NotificationType.NEW_MESSAGE)
             .order_by("-created_at")
         )
 

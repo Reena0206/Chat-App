@@ -16,7 +16,10 @@ from apps.connections.models import Connection
 from apps.connections.services import are_users_blocked, restricts_user
 from apps.notifications.services import create_new_message_notifications
 from apps.profiles.models import Profile
-
+from apps.chats.services import (
+    get_room_unread_count_for_user,
+    get_total_unread_count_for_user,
+)
 
 User = get_user_model()
 
@@ -155,7 +158,8 @@ class ChatRoomConsumer(AsyncJsonWebsocketConsumer):
                 text=text.strip(),
                 reply_to_id=reply_to_id,
             )
-            await self.create_message_notification(message_data["id"])
+            await self.create_message_notifications(message_data["id"])
+            await self.broadcast_chat_room_update()
         except ValueError as error:
             await self.send_json(
                 {
@@ -255,12 +259,17 @@ class ChatRoomConsumer(AsyncJsonWebsocketConsumer):
         )
 
     async def read_receipt_event(self, event):
+        read_at = event["read_at"]
+
+        if hasattr(read_at, "isoformat"):
+            read_at = read_at.isoformat()
+
         await self.send_json(
             {
                 "type": "messages.read",
                 "user": event["user"],
                 "room_id": event["room_id"],
-                "read_at": event["read_at"],
+                "read_at": read_at,
             }
         )
 
@@ -461,6 +470,20 @@ class ChatRoomConsumer(AsyncJsonWebsocketConsumer):
         ).exists()
 
     @database_sync_to_async
+    def create_message_notifications(self, message_id):
+        message = (
+            Message.objects.select_related("room", "sender")
+            .prefetch_related("media_files")
+            .get(id=message_id)
+        )
+
+        create_new_message_notifications(
+            actor=message.sender,
+            room=message.room,
+            message=message,
+        )
+
+    @database_sync_to_async
     def get_user_payload(self):
         profile = getattr(self.user, "profile", None)
 
@@ -476,16 +499,98 @@ class ChatRoomConsumer(AsyncJsonWebsocketConsumer):
             "profile_picture_url": profile_picture_url,
         }
 
+
+    async def broadcast_chat_room_update(self):
+        participant_ids = await self.get_room_participant_ids()
+
+        for user_id in participant_ids:
+            unread_count = await self.get_room_unread_count(
+                room_id=self.room_id,
+                user_id=user_id,
+            )
+            total_unread_count = await self.get_total_unread_count(
+                user_id=user_id,
+            )
+
+            await self.channel_layer.group_send(
+                f"chat_updates_user_{user_id}",
+                {
+                    "type": "chat_room_event",
+                    "room_id": int(self.room_id),
+                    "unread_count": unread_count,
+                    "total_unread_count": total_unread_count,
+                },
+            )
+
     @database_sync_to_async
-    def create_message_notification(self, message_id):
-        message = (
-            Message.objects.select_related("room", "sender")
-            .prefetch_related("media_files")
-            .get(id=message_id)
+    def get_room_participant_ids(self):
+        return list(
+            ChatRoomParticipant.objects.filter(
+                room_id=self.room_id,
+                is_active=True,
+            ).values_list("user_id", flat=True)
         )
 
-        create_new_message_notifications(
-            actor=message.sender,
-            room=message.room,
-            message=message,
+    @database_sync_to_async
+    def get_room_unread_count(self, room_id, user_id):
+        return get_room_unread_count_for_user(
+            room_id=room_id,
+            user_id=user_id,
+        )
+
+    @database_sync_to_async
+    def get_total_unread_count(self, user_id):
+        return get_total_unread_count_for_user(
+            user_id=user_id,
+        )
+
+
+class ChatUpdatesConsumer(AsyncJsonWebsocketConsumer):
+    async def connect(self):
+        self.user = self.scope["user"]
+
+        if not self.user.is_authenticated:
+            await self.close(code=4001)
+            return
+
+        self.group_name = f"chat_updates_user_{self.user.id}"
+
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name,
+        )
+
+        await self.accept()
+
+        await self.send_json(
+            {
+                "type": "chat.updates.connected",
+                "total_unread_count": await self.get_total_unread_count(),
+            }
+        )
+
+    async def disconnect(self, close_code):
+        if hasattr(self, "group_name"):
+            await self.channel_layer.group_discard(
+                self.group_name,
+                self.channel_name,
+            )
+
+    async def receive_json(self, content, **kwargs):
+        return
+
+    async def chat_room_event(self, event):
+        await self.send_json(
+            {
+                "type": "chat.room.updated",
+                "room_id": event["room_id"],
+                "unread_count": event.get("unread_count", 0),
+                "total_unread_count": event.get("total_unread_count", 0),
+            }
+        )
+
+    @database_sync_to_async
+    def get_total_unread_count(self):
+        return get_total_unread_count_for_user(
+            user_id=self.user.id,
         )

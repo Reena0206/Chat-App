@@ -31,7 +31,7 @@ async function loginUser(event) {
         setTokens(data.access, data.refresh);
         setCurrentUser(data.user);
 
-        window.location.href = "/dashboard/";
+        window.location.href = "/dashboard/chat/";
     } catch (error) {
         showAlert("loginAlert", formatApiError(error));
     }
@@ -88,6 +88,7 @@ async function logoutUser() {
         console.warn(error);
     }
 
+    localStorage.removeItem("chatapp-active-room");
     clearTokens();
     window.location.href = "/login/";
 }

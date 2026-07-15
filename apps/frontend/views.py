@@ -11,3 +11,8 @@ class RegisterPageView(TemplateView):
 
 class DashboardPageView(TemplateView):
     template_name = "frontend/dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["active_section"] = getattr(self, "section", None) or self.kwargs.get("section", "chat")
+        return context
