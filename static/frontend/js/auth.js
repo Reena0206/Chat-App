@@ -88,7 +88,7 @@ async function logoutUser() {
         console.warn(error);
     }
 
-    localStorage.removeItem("chatapp-active-room");
+    localStorage.removeItem("pingnest-active-room");
     clearTokens();
     window.location.href = "/login/";
 }

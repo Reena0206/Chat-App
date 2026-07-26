@@ -3,7 +3,7 @@ let activeChatUsername = null;
 let activeChatBlockedUsername = null;
 let chatSocket   = null;
 
-const _ACTIVE_CHAT_KEY = 'chatapp-active-room';
+const _ACTIVE_CHAT_KEY = 'pingnest-active-room';
 
 function getSavedActiveChat() {
     try {
@@ -118,7 +118,7 @@ async function unblockActiveChatUser(button = null) {
 // We persist { roomId: ISO-timestamp } in localStorage and suppress the badge
 // whenever the local read-time is newer than the last message timestamp.
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const _READ_STATE_KEY = 'chatapp-local-reads';
+const _READ_STATE_KEY = 'pingnest-local-reads';
 
 function _getReadState() {
     try { return JSON.parse(localStorage.getItem(_READ_STATE_KEY) || '{}'); }

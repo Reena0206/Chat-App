@@ -209,7 +209,7 @@ function showToast(message, type = "info") {
             <i data-lucide="${iconMap[type] || iconMap.info}" class="w-4 h-4"></i>
         </div>
         <div class="app-toast-body">
-            <p class="app-toast-title">ChatApp</p>
+            <p class="app-toast-title">PingNest</p>
             <p class="app-toast-message"></p>
         </div>
     `;
