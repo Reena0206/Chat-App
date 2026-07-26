@@ -101,21 +101,13 @@
                     onclick="showSection('chatSection', this)">
                 <i data-lucide="message-square" class="w-5 h-5 shrink-0"></i>
                 <span>Chat</span>
-                <span id="chatBadge"
-                      class="ml-auto min-w-[18px] h-[18px] text-[10px] font-bold text-white
-                             bg-brand-600 rounded-full flex items-center justify-center px-1 hidden">
-                    0
-                </span>
+                <span id="chatBadge" class="sidebar-badge sidebar-badge-chat hidden">0</span>
             </button>
             <button class="nav-item" id="nav-notifications"
                     onclick="showSection('notificationsSection', this)">
                 <i data-lucide="bell" class="w-5 h-5 shrink-0"></i>
                 <span>Notifications</span>
-                <span id="sidebarBadge"
-                      class="ml-auto min-w-[18px] h-[18px] text-[10px] font-bold text-white
-                             bg-rose-500 rounded-full flex items-center justify-center px-1 hidden">
-                    0
-                </span>
+                <span id="sidebarBadge" class="sidebar-badge sidebar-badge-notif hidden">0</span>
             </button>
             <button class="nav-item" id="nav-privacy"
                     onclick="showSection('privacySection', this)">
@@ -194,8 +186,8 @@
                                             Account Visibility
                                         </label>
                                         <select id="accountVisibility" class="form-input w-full px-4 py-3 rounded-xl">
-                                            <option value="public">Ã°Å¸Å’Â Public</option>
-                                            <option value="private">Ã°Å¸â€â€™ Private</option>
+                                            <option value="public">🌐 Public</option>
+                                            <option value="private">🔒 Private</option>
                                         </select>
                                     </div>
                                     <div class="space-y-1.5">
@@ -261,7 +253,7 @@
                             </h3>
                             <form id="sendRequestForm" class="space-y-3">
                                 <input type="text" id="requestUsername"
-                                       placeholder="Enter usernameÃ¢â‚¬Â¦"
+                                       placeholder="Enter username..."
                                        class="form-input w-full px-4 py-2.5 rounded-xl text-sm">
                                 <button class="w-full py-2.5 rounded-xl text-sm font-semibold text-white
                                                bg-gradient-to-r from-brand-600 to-purple-600
@@ -328,7 +320,7 @@
                     <!-- Right column -->
                     <div class="lg:col-span-2 space-y-4">
 
-                        <!-- Ã¢â€â‚¬Ã¢â€â‚¬ PEOPLE YOU MAY KNOW Ã¢â€â‚¬Ã¢â€â‚¬ -->
+                        <!-- —— PEOPLE YOU MAY KNOW —— -->
                         <div class="glass-card rounded-2xl border overflow-hidden"
                              style="border-color:var(--clr-border);">
                             <div class="flex items-center justify-between px-5 py-4"
@@ -409,7 +401,7 @@
                         <div class="p-4" style="border-bottom:1px solid var(--clr-border);">
                             <form id="startChatForm" class="flex gap-2">
                                 <input type="text" id="chatUsername"
-                                       placeholder="Open chat withÃ¢â‚¬Â¦"
+                                       placeholder="Open chat with..."
                                        class="form-input flex-1 px-3 py-2 rounded-xl text-sm">
                                 <button class="px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500
                                                active:scale-[0.97] transition-all duration-200">
@@ -453,43 +445,64 @@
                             </button>
                         </div>
                         <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 chat-messages-bg"></div>
-                        <div class="shrink-0 p-4 space-y-3" style="border-top:1px solid var(--clr-border);">
-                            <form id="sendMessageForm" class="flex items-center gap-2">
-                                <input type="text" id="messageText" placeholder="Type a messageÃ¢â‚¬Â¦"
+                        <div class="shrink-0 p-4 space-y-2" style="border-top:1px solid var(--clr-border);">
+                            <!-- Selected File Preview Chip -->
+                            <div id="filePreviewChip" class="file-preview-chip hidden flex items-center justify-between px-3.5 py-2 rounded-xl text-xs shadow-sm">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <span id="chipFileIcon" class="file-preview-icon px-2 py-0.5 rounded-lg font-bold text-xs shrink-0">📎</span>
+                                    <span id="chipFileName" class="truncate font-semibold">file.mp4</span>
+                                    <span id="chipFileSize" class="file-preview-size text-[10px] shrink-0">(12.4 MB)</span>
+                                </div>
+                                <button type="button" onclick="clearSelectedFile()" class="file-preview-clear p-1 transition-colors">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+
+                            <!-- Voice Recording Status Bar -->
+                            <div id="voiceRecordingBar" class="hidden flex items-center justify-between px-4 py-2.5 bg-rose-950/40 border border-rose-500/30 rounded-xl text-xs text-rose-300">
+                                <div class="flex items-center gap-2 font-medium">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0"></span>
+                                    <span id="recordingTimer">Recording 00:00</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" onclick="cancelVoiceRecording()"
+                                            class="recording-cancel-btn px-2.5 py-1 rounded-lg transition-colors">
+                                        Cancel
+                                    </button>
+                                    <button type="button" onclick="stopAndSendVoiceRecording()"
+                                            class="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium transition-colors flex items-center gap-1">
+                                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                                        Send Voice Note
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Unified Chat Input Form -->
+                            <form id="sendMessageForm" onsubmit="handleUnifiedSend(event)" class="flex items-center gap-2">
+                                <input type="file" id="mediaFile" class="hidden" accept="*/*" onchange="onFileSelected(this)">
+
+                                <button type="button" onclick="document.getElementById('mediaFile').click()"
+                                        title="Attach Image, Video, Audio or Document File"
+                                        class="chat-tool-btn w-10 h-10 rounded-xl active:scale-[0.97]
+                                               transition-all duration-200 flex items-center justify-center shrink-0">
+                                    <i data-lucide="paperclip" class="w-4 h-4"></i>
+                                </button>
+
+                                <input type="text" id="messageText" placeholder="Type a message..."
                                        autocomplete="off"
                                        class="form-input flex-1 px-4 py-2.5 rounded-xl text-sm">
+
+                                <button type="button" id="micRecordBtn" onclick="toggleVoiceRecording()"
+                                        title="Record Voice Note"
+                                        class="chat-tool-btn chat-tool-btn-danger w-10 h-10 rounded-xl active:scale-[0.97]
+                                               transition-all duration-200 flex items-center justify-center shrink-0">
+                                    <i data-lucide="mic" class="w-4 h-4"></i>
+                                </button>
                                 <button type="submit"
                                         class="w-10 h-10 rounded-xl bg-brand-600 hover:bg-brand-500
                                                active:scale-[0.97] transition-all duration-200
                                                flex items-center justify-center shrink-0">
                                     <i data-lucide="send" class="w-4 h-4 text-white"></i>
-                                </button>
-                            </form>
-                            <form id="mediaMessageForm" class="flex items-center gap-2">
-                                <select id="mediaType"
-                                        class="form-input px-3 py-2 rounded-xl text-xs w-28 shrink-0">
-                                    <option value="image">Ã°Å¸â€“Â¼ Image</option>
-                                    <option value="video">Ã°Å¸Å½Â¥ Video</option>
-                                    <option value="voice">Ã°Å¸Å½Â¤ Voice</option>
-                                </select>
-                                <label class="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl
-                                              cursor-pointer transition-colors duration-200 text-xs truncate"
-                                       style="background:var(--clr-surface2);border:1px solid var(--clr-border);color:var(--clr-muted);"
-                                       onmouseover="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-bg');"
-                                       onmouseout="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-surface2');">
-                                    <i data-lucide="paperclip" class="w-3.5 h-3.5 shrink-0"></i>
-                                    <span id="mediaFileName">Choose fileÃ¢â‚¬Â¦</span>
-                                    <input type="file" id="mediaFile" class="hidden"
-                                           onchange="document.getElementById('mediaFileName').textContent = this.files[0]?.name || 'Choose fileÃ¢â‚¬Â¦'">
-                                </label>
-                                <input type="number" id="mediaDuration" placeholder=""
-                                       class="form-input px-3 py-2 rounded-xl text-xs w-16 shrink-0">
-                                <button type="submit"
-                                        class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500
-                                               active:scale-[0.97] transition-all duration-200
-                                               text-white text-xs font-medium flex items-center gap-1 shrink-0">
-                                    <i data-lucide="upload" class="w-3.5 h-3.5"></i>
-                                    Upload
                                 </button>
                             </form>
                         </div>
@@ -553,8 +566,8 @@
 </script>
 <script src="{% static 'frontend/js/api.js' %}"></script>
 <script src="{% static 'frontend/js/auth.js' %}"></script>
-<script src="{% static 'frontend/js/dashboard.js' %}"></script>
-<script src="{% static 'frontend/js/chat.js' %}"></script>
+<script src="{% static 'frontend/js/dashboard.js' %}?v=4.0"></script>
+<script src="{% static 'frontend/js/chat.js' %}?v=6.0"></script>
 
 <script>
     function toggleSidebar() {
@@ -562,6 +575,7 @@
         var overlay = document.getElementById('sidebarOverlay');
         var isOpen  = !sidebar.classList.contains('-translate-x-full');
         sidebar.classList.toggle('-translate-x-full', isOpen);
+        sidebar.classList.toggle('translate-x-0', !isOpen);
         overlay.classList.toggle('hidden', isOpen);
     }
 

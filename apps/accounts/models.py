@@ -89,8 +89,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         ordering = ["-date_joined"]
         indexes = [
-            models.Index(fields=["email"]),
-            models.Index(fields=["username"]),
             models.Index(fields=["date_joined"]),
         ]
 

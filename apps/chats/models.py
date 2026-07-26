@@ -224,6 +224,7 @@ class MessageMedia(models.Model):
         IMAGE = "image", "Image"
         VIDEO = "video", "Video"
         VOICE = "voice", "Voice Note"
+        DOCUMENT = "document", "Document"
 
     message = models.ForeignKey(
         Message,

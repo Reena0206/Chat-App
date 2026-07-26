@@ -1,6 +1,9 @@
+import json
+
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.contrib.auth import get_user_model
+from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
 
 from apps.chats.api.serializers import MessageReadSerializer
@@ -25,6 +28,10 @@ User = get_user_model()
 
 
 class ChatRoomConsumer(AsyncJsonWebsocketConsumer):
+    @classmethod
+    async def encode_json(cls, content):
+        return json.dumps(content, cls=DjangoJSONEncoder)
+
     async def connect(self):
         self.user = self.scope["user"]
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
@@ -70,27 +77,33 @@ class ChatRoomConsumer(AsyncJsonWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if hasattr(self, "room_group_name"):
-            await self.channel_layer.group_discard(
-                self.room_group_name,
-                self.channel_name,
-            )
+            try:
+                await self.channel_layer.group_discard(
+                    self.room_group_name,
+                    self.channel_name,
+                )
+            except Exception:
+                pass
 
         if hasattr(self, "user") and self.user.is_authenticated:
-            await self.delete_channel_session()
-            is_still_online = await self.user_has_active_sessions()
+            try:
+                await self.delete_channel_session()
+                is_still_online = await self.user_has_active_sessions()
 
-            if not is_still_online:
-                await self.mark_user_offline()
+                if not is_still_online:
+                    await self.mark_user_offline()
 
-                if hasattr(self, "room_group_name"):
-                    await self.channel_layer.group_send(
-                        self.room_group_name,
-                        {
-                            "type": "presence_event",
-                            "event": "user_offline",
-                            "user": await self.get_user_payload(),
-                        },
-                    )
+                    if hasattr(self, "room_group_name"):
+                        await self.channel_layer.group_send(
+                            self.room_group_name,
+                            {
+                                "type": "presence_event",
+                                "event": "user_offline",
+                                "user": await self.get_user_payload(),
+                            },
+                        )
+            except Exception:
+                pass
 
     async def receive_json(self, content, **kwargs):
         event_type = content.get("type")
@@ -357,6 +370,8 @@ class ChatRoomConsumer(AsyncJsonWebsocketConsumer):
             is_deleted=False,
         ).exclude(
             sender_id=self.user.id,
+        ).exclude(
+            read_receipts__user=self.user,
         )
 
         receipts = [
@@ -367,10 +382,11 @@ class ChatRoomConsumer(AsyncJsonWebsocketConsumer):
             for message in messages
         ]
 
-        MessageReadReceipt.objects.bulk_create(
-            receipts,
-            ignore_conflicts=True,
-        )
+        if receipts:
+            MessageReadReceipt.objects.bulk_create(
+                receipts,
+                ignore_conflicts=True,
+            )
 
         ChatRoomParticipant.objects.filter(
             room_id=self.room_id,
@@ -546,6 +562,10 @@ class ChatRoomConsumer(AsyncJsonWebsocketConsumer):
 
 
 class ChatUpdatesConsumer(AsyncJsonWebsocketConsumer):
+    @classmethod
+    async def encode_json(cls, content):
+        return json.dumps(content, cls=DjangoJSONEncoder)
+
     async def connect(self):
         self.user = self.scope["user"]
 

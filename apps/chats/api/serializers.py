@@ -4,6 +4,7 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Q
 from rest_framework import serializers
 
 from apps.chats.models import (
@@ -13,7 +14,7 @@ from apps.chats.models import (
     MessageMedia,
     MessageReadReceipt,
 )
-from apps.connections.models import Connection
+from apps.connections.models import Connection, UserBlock
 from apps.connections.services import are_users_blocked, restricts_user
 from apps.profiles.models import Profile
 
@@ -97,10 +98,10 @@ class ChatUserSerializer(serializers.ModelSerializer):
 
         presence = getattr(obj, "presence", None)
 
-        if not presence:
+        if not presence or not presence.last_seen_at:
             return None
 
-        return presence.last_seen_at
+        return presence.last_seen_at.isoformat()
 
 
 class MessageMediaReadSerializer(serializers.ModelSerializer):
@@ -246,19 +247,31 @@ class MediaMessageCreateSerializer(serializers.Serializer):
         allow_null=True,
     )
 
-    IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"]
-    VIDEO_EXTENSIONS = [".mp4", ".webm", ".mov"]
+    IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+    VIDEO_EXTENSIONS = [".mp4", ".webm", ".mov", ".m4v", ".mkv", ".avi"]
     VOICE_EXTENSIONS = [".mp3", ".wav", ".m4a", ".ogg", ".webm", ".aac"]
 
     IMAGE_CONTENT_TYPES = [
         "image/jpeg",
         "image/png",
         "image/webp",
+        "image/gif",
+        "application/octet-stream",
     ]
     VIDEO_CONTENT_TYPES = [
         "video/mp4",
         "video/webm",
         "video/quicktime",
+        "video/x-m4v",
+        "video/m4v",
+        "video/x-matroska",
+        "video/matroska",
+        "application/x-matroska",
+        "video/mkv",
+        "video/x-mkv",
+        "video/avi",
+        "video/x-msvideo",
+        "application/octet-stream",
     ]
     VOICE_CONTENT_TYPES = [
         "audio/mpeg",
@@ -268,6 +281,7 @@ class MediaMessageCreateSerializer(serializers.Serializer):
         "audio/aac",
         "audio/ogg",
         "audio/webm",
+        "application/octet-stream",
     ]
 
     def validate_text(self, value):
@@ -296,9 +310,15 @@ class MediaMessageCreateSerializer(serializers.Serializer):
         detected_type = content_type or guessed_type or ""
 
         if extension not in self.IMAGE_EXTENSIONS:
-            raise serializers.ValidationError("Thumbnail must be JPG, PNG, or WEBP.")
+            raise serializers.ValidationError("Thumbnail must be JPG, PNG, WEBP, or GIF.")
 
-        if detected_type and detected_type not in self.IMAGE_CONTENT_TYPES:
+        is_valid_type = (
+            not detected_type
+            or detected_type.startswith("image/")
+            or detected_type in self.IMAGE_CONTENT_TYPES
+        )
+
+        if not is_valid_type:
             raise serializers.ValidationError("Invalid thumbnail file type.")
 
         return value
@@ -325,73 +345,63 @@ class MediaMessageCreateSerializer(serializers.Serializer):
             max_size = getattr(settings, "CHAT_IMAGE_MAX_SIZE", 5 * 1024 * 1024)
 
             if size > max_size:
-                raise serializers.ValidationError(
-                    {
-                        "file": "Image size cannot exceed 5 MB."
-                    }
-                )
+                raise serializers.ValidationError({"file": "Image size cannot exceed 5 MB."})
 
             if extension not in self.IMAGE_EXTENSIONS:
-                raise serializers.ValidationError(
-                    {
-                        "file": "Image must be JPG, JPEG, PNG, or WEBP."
-                    }
-                )
+                raise serializers.ValidationError({"file": "Image must be JPG, JPEG, PNG, WEBP, or GIF."})
 
-            if detected_type and detected_type not in self.IMAGE_CONTENT_TYPES:
-                raise serializers.ValidationError(
-                    {
-                        "file": "Invalid image file type."
-                    }
-                )
+            is_valid_type = (
+                not detected_type
+                or detected_type.startswith("image/")
+                or detected_type in self.IMAGE_CONTENT_TYPES
+            )
+
+            if not is_valid_type:
+                raise serializers.ValidationError({"file": "Invalid image file type."})
 
         elif media_type == MessageMedia.MediaType.VIDEO:
             max_size = getattr(settings, "CHAT_VIDEO_MAX_SIZE", 50 * 1024 * 1024)
 
             if size > max_size:
-                raise serializers.ValidationError(
-                    {
-                        "file": "Video size cannot exceed 50 MB."
-                    }
-                )
+                raise serializers.ValidationError({"file": "Video size cannot exceed 50 MB."})
 
             if extension not in self.VIDEO_EXTENSIONS:
-                raise serializers.ValidationError(
-                    {
-                        "file": "Video must be MP4, WEBM, or MOV."
-                    }
-                )
+                raise serializers.ValidationError({"file": f"Video must be one of: {', '.join(self.VIDEO_EXTENSIONS)}."})
 
-            if detected_type and detected_type not in self.VIDEO_CONTENT_TYPES:
-                raise serializers.ValidationError(
-                    {
-                        "file": "Invalid video file type."
-                    }
-                )
+            is_valid_type = (
+                not detected_type
+                or detected_type.startswith("video/")
+                or detected_type.startswith("application/")
+                or detected_type in self.VIDEO_CONTENT_TYPES
+            )
+
+            if not is_valid_type:
+                raise serializers.ValidationError({"file": "Invalid video file type."})
 
         elif media_type == MessageMedia.MediaType.VOICE:
             max_size = getattr(settings, "CHAT_VOICE_MAX_SIZE", 10 * 1024 * 1024)
 
             if size > max_size:
-                raise serializers.ValidationError(
-                    {
-                        "file": "Voice note size cannot exceed 10 MB."
-                    }
-                )
+                raise serializers.ValidationError({"file": "Voice note size cannot exceed 10 MB."})
 
             if extension not in self.VOICE_EXTENSIONS:
-                raise serializers.ValidationError(
-                    {
-                        "file": "Voice note must be MP3, WAV, M4A, OGG, WEBM, or AAC."
-                    }
-                )
+                raise serializers.ValidationError({"file": "Voice note must be MP3, WAV, M4A, OGG, WEBM, or AAC."})
 
-            if detected_type and detected_type not in self.VOICE_CONTENT_TYPES:
-                raise serializers.ValidationError(
-                    {
-                        "file": "Invalid voice note file type."
-                    }
-                )
+            is_valid_type = (
+                not detected_type
+                or detected_type.startswith("audio/")
+                or detected_type.startswith("video/")
+                or detected_type in self.VOICE_CONTENT_TYPES
+            )
+
+            if not is_valid_type:
+                raise serializers.ValidationError({"file": "Invalid voice note file type."})
+
+        elif media_type == MessageMedia.MediaType.DOCUMENT:
+            max_size = getattr(settings, "CHAT_DOCUMENT_MAX_SIZE", 50 * 1024 * 1024)
+
+            if size > max_size:
+                raise serializers.ValidationError({"file": "Document file size cannot exceed 50 MB."})
 
     @transaction.atomic
     def create(self, validated_data):
@@ -430,6 +440,10 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     participants = serializers.SerializerMethodField()
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
+    is_blocked = serializers.SerializerMethodField()
+    blocked_participant_id = serializers.SerializerMethodField()
+    block_status = serializers.SerializerMethodField()
+    blocked_by_username = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatRoom
@@ -440,12 +454,80 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             "participants",
             "last_message",
             "unread_count",
+            "is_blocked",
+            "blocked_participant_id",
+            "block_status",
+            "blocked_by_username",
             "created_at",
             "updated_at",
             "last_message_at",
         ]
         read_only_fields = fields
 
+
+    def get_block_record(self, obj):
+        request = self.context.get("request")
+
+        if not request or not request.user.is_authenticated:
+            return None
+
+        other_user_ids = [
+            participant.user_id
+            for participant in obj.participants.all()
+            if participant.is_active and participant.user_id != request.user.id
+        ]
+
+        if not other_user_ids:
+            return None
+
+        return (
+            UserBlock.objects.select_related("blocker", "blocked")
+            .filter(
+                Q(blocker=request.user, blocked_id__in=other_user_ids)
+                | Q(blocker_id__in=other_user_ids, blocked=request.user)
+            )
+            .first()
+        )
+
+    def get_blocked_participant(self, obj):
+        request = self.context.get("request")
+        block = self.get_block_record(obj)
+
+        if not request or not block:
+            return None
+
+        if block.blocker_id == request.user.id:
+            return block.blocked
+
+        return block.blocker
+
+    def get_is_blocked(self, obj):
+        return self.get_block_record(obj) is not None
+
+    def get_blocked_participant_id(self, obj):
+        blocked_user = self.get_blocked_participant(obj)
+        return blocked_user.id if blocked_user else None
+
+    def get_block_status(self, obj):
+        request = self.context.get("request")
+        block = self.get_block_record(obj)
+
+        if not request or not block:
+            return ""
+
+        if block.blocker_id == request.user.id:
+            return "you_blocked"
+
+        return "blocked_by"
+
+    def get_blocked_by_username(self, obj):
+        request = self.context.get("request")
+        block = self.get_block_record(obj)
+
+        if not request or not block or block.blocker_id == request.user.id:
+            return ""
+
+        return block.blocker.username
     def get_participants(self, obj):
         request = self.context.get("request")
 
@@ -573,5 +655,3 @@ class CreateOneToOneRoomSerializer(serializers.Serializer):
             target_user,
             created_by=request.user,
         )
-
-

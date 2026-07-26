@@ -1,6 +1,5 @@
 from rest_framework import serializers
 
-from apps.profiles.models import Profile
 from apps.connections.services import are_users_blocked, restricts_user
 from apps.profiles.models import Profile
 

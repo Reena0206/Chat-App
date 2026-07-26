@@ -35,6 +35,21 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshPrivacyActionUI();
     }
 
+
+    document.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-privacy-action]");
+        if (!button) return;
+
+        const username = button.dataset.username || "";
+        if (button.dataset.privacyAction === "unblock") {
+            await unblockUserFor(username, button);
+            return;
+        }
+
+        if (button.dataset.privacyAction === "unrestrict") {
+            await unrestrictUserFor(username, button);
+        }
+    });
     const profileForm     = document.getElementById("profileForm");
     const sendRequestForm = document.getElementById("sendRequestForm");
     const startChatForm   = document.getElementById("startChatForm");
@@ -111,8 +126,11 @@ function showSection(sectionId, button, updateUrl = true) {
 
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("sidebarOverlay");
-    if (sidebar && sidebar.classList.contains("translate-x-0")) {
+    const sidebarIsOpen = sidebar && !sidebar.classList.contains("-translate-x-full");
+
+    if (sidebarIsOpen) {
         sidebar.classList.add("-translate-x-full");
+        sidebar.classList.remove("translate-x-0");
         if (overlay) overlay.classList.add("hidden");
     }
 }
@@ -462,6 +480,88 @@ async function sendSuggestedRequest(username, userId, btn) {
 }
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Notifications Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+async function handleNotificationClick(notification) {
+    if (!notification) return;
+
+    if (!notification.is_read) {
+        try {
+            await apiRequest(`/notifications/${notification.id}/mark-read/`, {
+                method: "POST",
+                headers: getAuthHeaders(),
+            });
+            loadNotifications();
+        } catch (e) {
+            console.error("Mark read error:", e);
+        }
+    }
+
+    const type = notification.notification_type || "";
+
+    if (type === "connection_request" || type === "connection_accepted") {
+        showSection("connectionsSection", null);
+    } else if (type === "new_message") {
+        showSection("chatSection", null);
+        if (notification.chat_room) {
+            const roomId = typeof notification.chat_room === "object" ? notification.chat_room.id : notification.chat_room;
+            if (roomId && typeof openChatRoom === "function") {
+                openChatRoom(roomId);
+            }
+        } else if (notification.actor && notification.actor.username) {
+            if (typeof openChatWithUsername === "function") {
+                openChatWithUsername(notification.actor.username);
+            }
+        }
+    } else {
+        if (notification.chat_room) {
+            showSection("chatSection", null);
+            const roomId = typeof notification.chat_room === "object" ? notification.chat_room.id : notification.chat_room;
+            if (roomId && typeof openChatRoom === "function") {
+                openChatRoom(roomId);
+            }
+        } else if (notification.connection_request) {
+            showSection("connectionsSection", null);
+        }
+    }
+}
+
+let lastNotificationUnreadTotal = 0;
+
+function setNotificationUnreadTotal(count) {
+    lastNotificationUnreadTotal = Math.max(0, Number(count) || 0);
+}
+
+function updateNotificationBadges(count) {
+    setNotificationUnreadTotal(count);
+
+    const headerBadge  = document.getElementById("notificationBadge");
+    const sidebarBadge = document.getElementById("sidebarBadge");
+
+    const num = lastNotificationUnreadTotal;
+    const text = num > 99 ? "99+" : String(num);
+
+    if (headerBadge) {
+        headerBadge.innerText = text;
+        if (num <= 0) {
+            headerBadge.classList.add("hidden");
+            headerBadge.style.display = "none";
+        } else {
+            headerBadge.classList.remove("hidden");
+            headerBadge.style.display = "inline-flex";
+        }
+    }
+
+    if (sidebarBadge) {
+        sidebarBadge.innerText = text;
+        if (num <= 0) {
+            sidebarBadge.classList.add("hidden");
+            sidebarBadge.style.display = "none";
+        } else {
+            sidebarBadge.classList.remove("hidden");
+            sidebarBadge.style.display = "inline-flex";
+        }
+    }
+}
+
 async function loadNotifications() {
     const container = document.getElementById("notificationsList");
     if (!container) return;
@@ -480,18 +580,7 @@ async function loadNotifications() {
         });
 
         const count = countData.unread_count || 0;
-
-        const badge        = document.getElementById("notificationBadge");
-        const sidebarBadge = document.getElementById("sidebarBadge");
-
-        if (badge) {
-            badge.innerText = count;
-            badge.classList.toggle("hidden", count === 0);
-        }
-        if (sidebarBadge) {
-            sidebarBadge.innerText = count;
-            sidebarBadge.classList.toggle("hidden", count === 0);
-        }
+        updateNotificationBadges(count);
 
         if (!notifications.length) {
             container.innerHTML = `
@@ -504,32 +593,49 @@ async function loadNotifications() {
             return;
         }
 
-        container.innerHTML = notifications.map((notification) => `
-            <div class="notification-card ${notification.is_read ? "" : "notification-unread"}">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                             style="background:${notification.is_read ? "var(--clr-surface2)" : "var(--clr-brand-bg)"};">
-                            <i data-lucide="bell" style="width:14px;height:14px;color:${notification.is_read ? "var(--clr-faint)" : "var(--clr-brand-light)"};"></i>
+        container.innerHTML = notifications.map((notification) => {
+            const isRead = notification.is_read;
+            const notifData = JSON.stringify(notification).replace(/"/g, '&quot;');
+            const type = notification.notification_type || "";
+            let icon = "bell";
+
+            if (type === "connection_request" || type === "connection_accepted") {
+                icon = "user-check";
+            } else if (type === "new_message") {
+                icon = "message-square";
+            }
+
+            return `
+                <div class="notification-card ${isRead ? "" : "notification-unread"} cursor-pointer hover:border-brand-500/50 transition-all p-4 rounded-xl my-2"
+                     onclick="handleNotificationClick(${notifData})">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-start gap-3">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                                 style="background:${isRead ? "var(--clr-surface2)" : "var(--clr-brand-bg)"};">
+                                <i data-lucide="${icon}" style="width:16px;height:16px;color:${isRead ? "var(--clr-faint)" : "var(--clr-brand-light)"};"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold page-heading">${escapeHtml(notification.title)}</p>
+                                <p class="text-xs page-subtext mt-0.5">${escapeHtml(notification.body)}</p>
+                                <span class="text-[10px] text-gray-400 mt-1 block">${formatPrivacyTimestamp(notification.created_at)}</span>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-sm font-semibold page-heading">${notification.title}</p>
-                            <p class="text-xs page-subtext mt-0.5">${notification.body}</p>
+                        <div class="flex items-center gap-2 shrink-0" onclick="event.stopPropagation()">
+                            ${isRead
+                                ? `<span class="text-xs page-subtext font-medium">Read</span>`
+                                : `<button onclick="markNotificationRead(${notification.id})"
+                                           class="text-xs border px-2.5 py-1 rounded-lg active:scale-[0.97] transition-all duration-200"
+                                           style="color:var(--clr-brand-light);border-color:rgba(99,102,241,0.4);"
+                                           onmouseover="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-bg');"
+                                           onmouseout="this.style.background='';">
+                                       Mark Read
+                                   </button>`
+                            }
                         </div>
                     </div>
-                    ${notification.is_read
-                        ? `<span class="text-xs page-subtext font-medium shrink-0">Read</span>`
-                        : `<button onclick="markNotificationRead(${notification.id})"
-                                   class="text-xs border px-2.5 py-1 rounded-lg active:scale-[0.97] transition-all duration-200 shrink-0"
-                                   style="color:var(--clr-brand-light);border-color:rgba(99,102,241,0.4);"
-                                   onmouseover="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--clr-brand-bg');"
-                                   onmouseout="this.style.background='';">
-                               Mark Read
-                           </button>`
-                    }
                 </div>
-            </div>
-        `).join("");
+            `;
+        }).join("");
 
         if (window.lucide) lucide.createIcons({ nodes: container.querySelectorAll('[data-lucide]') });
     } catch (error) {
@@ -689,27 +795,27 @@ function showPrivacyFeedback(message, type = "info") {
 }
 
 async function blockUser(button = null) {
-    await userPrivacyAction("/blocks/block/", { button });
+    return userPrivacyAction("/blocks/block/", { button });
 }
 
 async function unblockUser(button = null) {
-    await userPrivacyAction("/blocks/unblock/", { button });
+    return userPrivacyAction("/blocks/unblock/", { button });
 }
 
 async function restrictUser(button = null) {
-    await userPrivacyAction("/restrictions/restrict/", { button });
+    return userPrivacyAction("/restrictions/restrict/", { button });
 }
 
 async function unrestrictUser(button = null) {
-    await userPrivacyAction("/restrictions/unrestrict/", { button });
+    return userPrivacyAction("/restrictions/unrestrict/", { button });
 }
 
 async function unblockUserFor(username, button = null) {
-    await userPrivacyAction("/blocks/unblock/", { username, button });
+    return userPrivacyAction("/blocks/unblock/", { username, button });
 }
 
 async function unrestrictUserFor(username, button = null) {
-    await userPrivacyAction("/restrictions/unrestrict/", { username, button });
+    return userPrivacyAction("/restrictions/unrestrict/", { username, button });
 }
 
 async function userPrivacyAction(endpoint, options = {}) {
@@ -738,6 +844,15 @@ async function userPrivacyAction(endpoint, options = {}) {
         });
 
         showPrivacyFeedback(data.message || "Action completed.", "success");
+
+        if (endpoint === "/blocks/block/" && typeof showBlockedChatStateForUsername === "function") {
+            showBlockedChatStateForUsername(username);
+        }
+
+        if (endpoint === "/blocks/unblock/" && typeof clearBlockedChatStateForUsername === "function") {
+            clearBlockedChatStateForUsername(username);
+        }
+
         await Promise.all([
             loadBlockedUsers(),
             loadRestrictedUsers(),
@@ -811,7 +926,7 @@ async function loadBlockedUsers() {
                                 class="privacy-action-btn privacy-action-btn-muted">
                             Use
                         </button>
-                        <button type="button" onclick="unblockUserFor(${JSON.stringify(username)}, this)"
+                        <button type="button" data-privacy-action="unblock" data-username="${escapeHtml(username)}"
                                 class="privacy-action-btn privacy-action-btn-danger">
                             Unblock
                         </button>
@@ -882,7 +997,7 @@ async function loadRestrictedUsers() {
                                 class="privacy-action-btn privacy-action-btn-muted">
                             Use
                         </button>
-                        <button type="button" onclick="unrestrictUserFor(${JSON.stringify(username)}, this)"
+                        <button type="button" data-privacy-action="unrestrict" data-username="${escapeHtml(username)}"
                                 class="privacy-action-btn privacy-action-btn-warning">
                             Unrestrict
                         </button>
@@ -938,23 +1053,24 @@ function connectNotificationSocket() {
     notificationSocket.onmessage = function (event) {
         const data = JSON.parse(event.data);
 
-        if (data.type === "notification.new") {
+        if (data.type === "notification.new" || data.type === "notification_event") {
+            if (typeof data.unread_count === "number") {
+                updateNotificationBadges(data.unread_count);
+            } else if (data.notification && !data.notification.is_read) {
+                updateNotificationBadges(lastNotificationUnreadTotal + 1);
+            }
+
             loadNotifications();
+            if (data.notification && typeof showToast === "function") {
+                const title = data.notification.title || "Notification";
+                const body = data.notification.body || "";
+                showToast(`${title}: ${body}`, "info");
+            }
         }
 
         if (data.type === "notifications.connected") {
-            const count        = data.unread_count || 0;
-            const badge        = document.getElementById("notificationBadge");
-            const sidebarBadge = document.getElementById("sidebarBadge");
-
-            if (badge) {
-                badge.innerText = count;
-                badge.classList.toggle("hidden", count === 0);
-            }
-            if (sidebarBadge) {
-                sidebarBadge.innerText = count;
-                sidebarBadge.classList.toggle("hidden", count === 0);
-            }
+            const count = data.unread_count || 0;
+            updateNotificationBadges(count);
         }
     };
 
@@ -962,6 +1078,7 @@ function connectNotificationSocket() {
         setTimeout(connectNotificationSocket, 3000);
     };
 }
+
 function connectChatUpdatesSocket() {
     const token = getAccessToken();
     if (!token) return;
@@ -989,20 +1106,12 @@ function connectChatUpdatesSocket() {
         }
 
         if (data.type === "chat.room.updated") {
-            const nextTotal = typeof data.total_unread_count === "number" ? data.total_unread_count : 0;
-            const delta = nextTotal - lastChatUnreadTotal;
-
-            if (delta > 0 && shouldShowChatToast(data.room_id) && typeof showToast === "function") {
-                showToast(
-                    delta === 1
-                        ? "A new unread chat just arrived."
-                        : `${delta} new unread chats just arrived.`,
-                    "info"
-                );
+            if (typeof data.total_unread_count === "number") {
+                syncChatBadge(data.total_unread_count);
             }
 
-            syncChatBadge(nextTotal);
             loadChatRooms();
+            loadNotifications();
         }
     };
 

@@ -231,26 +231,37 @@ function showToast(message, type = "info") {
     }, 3500);
 }
 
+function escapeHtml(str) {
+    if (typeof str !== "string") return str;
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function formatApiError(error) {
     if (!error) {
         return "Something went wrong.";
     }
 
     if (error.detail) {
-        return error.detail;
+        return escapeHtml(error.detail);
     }
 
     if (error.non_field_errors) {
-        return error.non_field_errors.join(", ");
+        return escapeHtml(error.non_field_errors.join(", "));
     }
 
     const messages = [];
 
     Object.keys(error).forEach((key) => {
+        const fieldName = escapeHtml(key);
         if (Array.isArray(error[key])) {
-            messages.push(`${key}: ${error[key].join(", ")}`);
+            messages.push(`${fieldName}: ${escapeHtml(error[key].join(", "))}`);
         } else {
-            messages.push(`${key}: ${error[key]}`);
+            messages.push(`${fieldName}: ${escapeHtml(error[key])}`);
         }
     });
 

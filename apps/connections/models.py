@@ -121,6 +121,10 @@ class Connection(models.Model):
     def save(self, *args, **kwargs):
         if self.user1_id and self.user2_id and self.user1_id > self.user2_id:
             self.user1_id, self.user2_id = self.user2_id, self.user1_id
+            if hasattr(self, "_user1_cache"):
+                delattr(self, "_user1_cache")
+            if hasattr(self, "_user2_cache"):
+                delattr(self, "_user2_cache")
 
         super().save(*args, **kwargs)
 

@@ -17,7 +17,7 @@ from apps.chats.api.serializers import (
 )
 from apps.chats.models import ChatRoom, ChatRoomParticipant, Message, MessageReadReceipt
 from apps.chats.services import get_room_unread_count_for_user, get_total_unread_count_for_user
-from apps.connections.services import are_users_blocked, get_blocked_user_ids
+from apps.connections.services import are_users_blocked
 from apps.notifications.services import create_new_message_notifications
 
 
@@ -31,8 +31,6 @@ class ChatRoomViewSet(
     parser_classes = [JSONParser, FormParser, MultiPartParser]
 
     def get_queryset(self):
-        blocked_user_ids = get_blocked_user_ids(self.request.user)
-
         queryset = (
             ChatRoom.objects.prefetch_related(
                 "participants",
@@ -53,11 +51,6 @@ class ChatRoomViewSet(
             .distinct()
             .order_by("-last_message_at", "-created_at")
         )
-
-        if blocked_user_ids:
-            queryset = queryset.exclude(
-                participants__user_id__in=blocked_user_ids,
-            )
 
         return queryset
 
@@ -412,6 +405,8 @@ class ChatRoomViewSet(
             is_deleted=False,
         ).exclude(
             sender=request.user,
+        ).exclude(
+            read_receipts__user=request.user,
         )
 
         receipts = [
@@ -422,10 +417,11 @@ class ChatRoomViewSet(
             for message in messages
         ]
 
-        MessageReadReceipt.objects.bulk_create(
-            receipts,
-            ignore_conflicts=True,
-        )
+        if receipts:
+            MessageReadReceipt.objects.bulk_create(
+                receipts,
+                ignore_conflicts=True,
+            )
 
         ChatRoomParticipant.objects.filter(
             room=room,
